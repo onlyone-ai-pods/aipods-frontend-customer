@@ -20,7 +20,7 @@ export default function InteractiveSandbox({ onShowConversion }) {
       setMessages([
         {
           sender: 'system',
-          text: `📄 Documentación "${data.session.file_name}" procesada en espacio Sandbox efímero (${data.session.tenant_id}). Tienes 3 preguntas de prueba gratuitas.`
+          text: `📄 Documentación "${data.session.file_name}" procesada e indexada en espacio Sandbox Multi-Formato (.pdf, .md, .rst, .txt) (${data.session.tenant_id}). Tienes 3 preguntas de prueba gratuitas.`
         }
       ]);
     } catch (err) {
@@ -36,7 +36,7 @@ export default function InteractiveSandbox({ onShowConversion }) {
       setMessages([
         {
           sender: 'system',
-          text: `📄 Documentación "${mockSession.file_name}" cargada en Sandbox de prueba. Tienes 3 consultas gratuitas.`
+          text: `📄 Documentación "${mockSession.file_name}" cargada en Sandbox de prueba Multi-Formato (.pdf, .md, .rst, .txt). Tienes 3 consultas gratuitas.`
         }
       ]);
     } finally {
@@ -91,9 +91,9 @@ export default function InteractiveSandbox({ onShowConversion }) {
         ...prev,
         {
           sender: 'bot',
-          text: `AI Pod AFIP / ARCA: Para generar la clave privada y el archivo CSR para AFIP/ARCA, ejecute el comando OpenSSL en su terminal: openssl req -new -key privada.key -out pedido.csr`,
-          citations: ['Guia_AFIP_Certificados_v1.pdf (Pagina 4)'],
-          dryRun: { is_dry_run: true, action_name: 'generar_csr_afip' }
+          text: `AI Pod Core RAG: Para consultar la documentación RAG multi-formato, el sistema ha verificado los chunks procesados por FileSanitizer y Qdrant Vector Store.`,
+          citations: ['Guia_RAG_Ingestion_v1.md (Seccion # Architecture)'],
+          dryRun: { is_dry_run: true, action_name: 'consultar_rag_multiformato' }
         }
       ]);
     } finally {
@@ -105,8 +105,8 @@ export default function InteractiveSandbox({ onShowConversion }) {
     <section className="sandbox-section" id="sandbox">
       <div className="sandbox-card">
         <div className="sandbox-header">
-          <h2>🧪 Sandbox Interactivo: &quot;Sube tu PDF y Prueba&quot;</h2>
-          <p>Pruebe el poder de los AI Pods con su propio documento sin necesidad de registrarse.</p>
+          <h2>🧪 Sandbox Interactivo Multi-Formato: &quot;Sube tus Documentos PDF, MD, RST o TXT&quot;</h2>
+          <p>Pruebe el motor RAG de los AI Pods con cualquier formato de documento estructurado sin necesidad de registrarse.</p>
         </div>
 
         {!session ? (
@@ -122,11 +122,19 @@ export default function InteractiveSandbox({ onShowConversion }) {
             }}
           >
             <div className="dropzone-icon">📁</div>
-            <h3>Arrastre su archivo PDF aquí o haga clic para seleccionar</h3>
-            <p>Soporta manuales internos, normativas AFIP o balances (hasta 5MB)</p>
-            <button className="btn-primary" onClick={() => handleInitializeSession('Manual_AFIP_Certificados_2026.pdf')}>
-              {loading ? 'Inicializando Sesión...' : 'Probar con Documento Ejemplo'}
-            </button>
+            <h3>Arrastre su archivo (.pdf, .md, .rst, .txt) aquí o haga clic para seleccionar</h3>
+            <p>Soporta manuales internos, Markdown AST, reStructuredText o notas de texto plano (FileSanitizer Activo)</p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+              <button className="btn-primary" onClick={() => handleInitializeSession('Manual_AFIP_Certificados_2026.pdf')}>
+                {loading ? 'Inicializando Sesión...' : 'Probar con PDF'}
+              </button>
+              <button className="btn-primary" style={{ background: '#2563eb' }} onClick={() => handleInitializeSession('Architecture_Guide.md')}>
+                Probar con Markdown (.md)
+              </button>
+              <button className="btn-primary" style={{ background: '#059669' }} onClick={() => handleInitializeSession('Documentation_Index.rst')}>
+                Probar con reST (.rst)
+              </button>
+            </div>
           </div>
         ) : (
           <div className="sandbox-chat-container">
@@ -162,7 +170,7 @@ export default function InteractiveSandbox({ onShowConversion }) {
             <form onSubmit={handleSendQuery} className="chat-input-form">
               <input
                 type="text"
-                placeholder="Escriba su pregunta (ej: ¿Cómo genero mi clave AFIP?)..."
+                placeholder="Escriba su pregunta sobre la documentación cargada..."
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 disabled={session.query_count >= session.max_queries || loading}

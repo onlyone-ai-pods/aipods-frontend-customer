@@ -21,7 +21,7 @@ export default function ValuePillars() {
 
   return (
     <section className="pillars-section">
-      <h2 className="section-title">¿Por qué 'Servicio como Software'?</h2>
+      <h2 className="section-title">¿Por qué &apos;Servicio como Software&apos;?</h2>
       <p className="section-subtitle">Tres pilares comerciales que revolucionan la productividad empresarial</p>
       
       <div className="pillars-grid">

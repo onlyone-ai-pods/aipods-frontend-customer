@@ -105,7 +105,7 @@ export default function InteractiveSandbox({ onShowConversion }) {
     <section className="sandbox-section" id="sandbox">
       <div className="sandbox-card">
         <div className="sandbox-header">
-          <h2>🧪 Sandbox Interactivo: "Sube tu PDF y Prueba"</h2>
+          <h2>🧪 Sandbox Interactivo: &quot;Sube tu PDF y Prueba&quot;</h2>
           <p>Pruebe el poder de los AI Pods con su propio documento sin necesidad de registrarse.</p>
         </div>
 

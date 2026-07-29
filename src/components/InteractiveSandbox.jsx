@@ -124,18 +124,12 @@ export default function InteractiveSandbox() {
       setSession({ ...session, query_count: newCount });
 
       const lower = textToSend.toLowerCase();
-      const isPV = lower.includes('puntos de venta') || lower.includes('pv') || lower.includes('inactivo') || lower.includes('activos');
-      
-      let filtro = 'Activos';
-      if (lower.includes('inactivo') || lower.includes('baja')) {
-        filtro = 'Inactivos';
-      } else if (lower.includes('todos') || lower.includes('completo')) {
-        filtro = 'Todos';
-      }
+      const isRetenciones = lower.includes('retencion') || lower.includes('retenciones') || lower.includes('percepcion');
+      const isPV = !isRetenciones;
 
-      const actionName = isPV ? `gestionar_puntos_de_venta_arca_${filtro.toLowerCase()}` : 'descargar_retenciones_arca';
-      const summaryText = isPV ? `Simulación de consulta de Puntos de Venta (${filtro}) en ARCA.` : 'Simulación de consulta de retenciones/percepciones en ARCA (Mirequa).';
-      const cmdText = isPV ? `node scripts/puntos_de_venta_arca.js --accion=Consultar --filtro=${filtro} --cuit=20262534538` : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
+      const cmdText = isPV ? `node scripts/puntos_de_venta_arca.js --accion=Consultar --query="${textToSend}" --cuit=20262534538` : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
+      const actionName = isPV ? 'gestionar_puntos_de_venta_arca' : 'descargar_retenciones_arca';
+      const summaryText = isPV ? `Simulación de búsqueda de Puntos de Venta ('${textToSend}') en ARCA.` : 'Simulación de consulta de retenciones en ARCA.';
       const docCitation = isPV ? 'ARCA_PuntosDeVenta_Spec_v2026.pdf' : 'ARCA_MisRetenciones_Spec_v2026.pdf';
 
       setMessages(prev => [
@@ -143,7 +137,7 @@ export default function InteractiveSandbox() {
         {
           sender: 'bot',
           podId: 'POD_AFIP_FISCAL',
-          text: `### 📄 Resultado de Consulta en ARCA - Puntos de Venta (${filtro})\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).\n\n💡 *Puedes filtrar desde esta consola escribiendo: 'Mostrar activos', 'Mostrar inactivos' o 'Mostrar todos'.*`,
+          text: `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).\n\n💡 *Puedes filtrar desde esta consola escribiendo: 'ver odoo', 'ver rece', 'ver inactivos' o 'ver todos'.*`,
           citations: [docCitation],
           dryRun: {
             is_dry_run: true,
@@ -224,19 +218,19 @@ export default function InteractiveSandbox() {
     if (queryTerm.includes('odoo')) {
       const filtered = datasetPV.filter(pv => pv.tipo.toLowerCase().includes('odoo'));
       const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 BÚSQUEDA EN ARCA: 'ver odoo'\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
+      return `🔍 RESULTADO DE BÚSQUEDA EN ARCA ('Odoo')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
     }
 
     if (queryTerm.includes('rece') || queryTerm.includes('web service')) {
       const filtered = datasetPV.filter(pv => pv.tipo.toLowerCase().includes('rece'));
       const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 BÚSQUEDA EN ARCA: 'RECE'\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
+      return `🔍 RESULTADO DE BÚSQUEDA EN ARCA ('RECE')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
     }
 
     if (queryTerm.includes('linea')) {
       const filtered = datasetPV.filter(pv => pv.tipo.toLowerCase().includes('línea') || pv.tipo.toLowerCase().includes('linea'));
       const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 BÚSQUEDA EN ARCA: 'Comprobantes en Línea'\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
+      return `🔍 RESULTADO DE BÚSQUEDA EN ARCA ('Comprobantes en Línea')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
     }
 
     if (queryTerm.includes('inactivo') || queryTerm.includes('baja')) {
@@ -250,7 +244,7 @@ export default function InteractiveSandbox() {
       return `📍 TODOS LOS PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Registrados: ${datasetPV.length}`;
     }
 
-    if (rawResult && !rawResult.includes("Total Puntos de Venta Activos: 3")) return rawResult;
+    if (rawResult && rawResult.includes("Coincidencias encontradas")) return rawResult;
 
     // 3-Column Search: Número, Tipo, Estado
     const matches = datasetPV.filter(pv => 

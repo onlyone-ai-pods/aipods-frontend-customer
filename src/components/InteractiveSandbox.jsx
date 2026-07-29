@@ -128,10 +128,19 @@ export default function InteractiveSandbox({ onShowConversion }) {
       const newCount = session.query_count + 1;
       setSession({ ...session, query_count: newCount });
 
-      const isPV = textToSend.toLowerCase().includes('puntos de venta') || textToSend.toLowerCase().includes('pv');
-      const actionName = isPV ? 'gestionar_puntos_de_venta_arca' : 'descargar_retenciones_arca';
-      const summaryText = isPV ? 'Simulación de consulta de Puntos de Venta en ARCA (Administración de PV).' : 'Simulación de consulta de retenciones/percepciones en ARCA (Mirequa).';
-      const cmdText = isPV ? 'node scripts/puntos_de_venta_arca.js --accion=Consultar --cuit=20262534538' : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
+      const lower = textToSend.toLowerCase();
+      const isPV = lower.includes('puntos de venta') || lower.includes('pv') || lower.includes('inactivo') || lower.includes('activos');
+      
+      let filtro = 'Activos';
+      if (lower.includes('inactivo') || lower.includes('baja')) {
+        filtro = 'Inactivos';
+      } else if (lower.includes('todos') || lower.includes('completo')) {
+        filtro = 'Todos';
+      }
+
+      const actionName = isPV ? `gestionar_puntos_de_venta_arca_${filtro.toLowerCase()}` : 'descargar_retenciones_arca';
+      const summaryText = isPV ? `Simulación de consulta de Puntos de Venta (${filtro}) en ARCA.` : 'Simulación de consulta de retenciones/percepciones en ARCA (Mirequa).';
+      const cmdText = isPV ? `node scripts/puntos_de_venta_arca.js --accion=Consultar --filtro=${filtro} --cuit=20262534538` : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
       const docCitation = isPV ? 'ARCA_PuntosDeVenta_Spec_v2026.pdf' : 'ARCA_MisRetenciones_Spec_v2026.pdf';
 
       setMessages(prev => [
@@ -139,7 +148,7 @@ export default function InteractiveSandbox({ onShowConversion }) {
         {
           sender: 'bot',
           podId: 'POD_AFIP_FISCAL',
-          text: `### 📄 Resultado de Consulta en ARCA - Puntos de Venta\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).`,
+          text: `### 📄 Resultado de Consulta en ARCA - Puntos de Venta (${filtro})\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).\n\n💡 *Puedes filtrar desde esta consola escribiendo: 'Mostrar activos', 'Mostrar inactivos' o 'Mostrar todos'.*`,
           citations: [docCitation],
           dryRun: {
             is_dry_run: true,
@@ -157,7 +166,6 @@ export default function InteractiveSandbox({ onShowConversion }) {
 
   const handleSendToAdmin = async (token) => {
     try {
-      // Trigger approval action on backend
       const res = await fetch('http://localhost:8080/api/v1/admin/approvals/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,7 +190,6 @@ export default function InteractiveSandbox({ onShowConversion }) {
         );
       }
     } catch (err) {
-      // Offline fallback
       setMessages(prevMsgs =>
         prevMsgs.map(msg => {
           if (msg.dryRun && (msg.dryRun.approval_token === token || msg.dryRun.token === token)) {
@@ -190,20 +197,45 @@ export default function InteractiveSandbox({ onShowConversion }) {
               ...msg,
               dryRun: {
                 ...msg.dryRun,
-                status: 'APPROVED',
-                execution_result: `📍 PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO
-PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services   | Estado: ACTIVO
-PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO
---------------------------------------------------------------------------------
-Total Puntos de Venta Vigentes: 3 (Verificado en ARCA/AFIP)`
+                status: 'APPROVED'
               }
             };
           }
           return msg;
         })
       );
+    }
+  };
+
+  const getFilteredOutput = (cmd, rawResult) => {
+    if (rawResult) return rawResult;
+    const lowerCmd = (cmd || '').toLowerCase();
+    
+    if (lowerCmd.includes('inactivo') || lowerCmd.includes('baja')) {
+      return `📍 PUNTOS DE VENTA INACTIVOS / DADOS DE BAJA EN ARCA (CUIT 20262534538)
+--------------------------------------------------------------------------------
+PV N° 00003 | Tipo: FactuWeb Histórico (Deprecado 2021)    | Estado: DADO DE BAJA
+PV N° 00005 | Tipo: Controlador Fiscal Sucursal Belgrano   | Estado: INACTIVO
+--------------------------------------------------------------------------------
+Total Puntos de Venta Inactivos: 2 (Verificado en ARCA/AFIP)`;
+    } else if (lowerCmd.includes('todos') || lowerCmd.includes('completo')) {
+      return `📍 TODOS LOS PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)
+--------------------------------------------------------------------------------
+PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO
+PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services   | Estado: ACTIVO
+PV N° 00003 | Tipo: FactuWeb Histórico (Deprecado 2021)    | Estado: DADO DE BAJA
+PV N° 00005 | Tipo: Controlador Fiscal Sucursal Belgrano   | Estado: INACTIVO
+PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO
+--------------------------------------------------------------------------------
+Total Puntos de Venta Registrados: 5 (3 Activos, 2 Inactivos)`;
+    } else {
+      return `📍 PUNTOS DE VENTA ACTIVOS EN ARCA (CUIT 20262534538)
+--------------------------------------------------------------------------------
+PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO
+PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services   | Estado: ACTIVO
+PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO
+--------------------------------------------------------------------------------
+Total Puntos de Venta Activos: 3 (Verificado en ARCA/AFIP)`;
     }
   };
 
@@ -254,14 +286,14 @@ Total Puntos de Venta Vigentes: 3 (Verificado en ARCA/AFIP)`
             {/* Quick Prompt Suggestions */}
             <div className="quick-prompts" style={{ display: 'flex', gap: '8px', padding: '10px 16px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.85rem', color: '#94a3b8', alignSelf: 'center' }}>💡 Consultas Rápidas:</span>
-              <button className="prompt-pill" onClick={() => handleSendQuery('Consulta mis puntos de venta registrados en ARCA')}>
-                📍 Consultar Puntos de Venta ARCA
+              <button className="prompt-pill" onClick={() => handleSendQuery('Consulta mis puntos de venta ACTIVOS en ARCA')}>
+                🟢 Puntos de Venta Activos
               </button>
-              <button className="prompt-pill" onClick={() => handleSendQuery('Descargá mis retenciones sufridas de IVA y Ganancias en ARCA')}>
-                📋 Consultar Retenciones ARCA
+              <button className="prompt-pill" onClick={() => handleSendQuery('Consulta mis puntos de venta INACTIVOS en ARCA')}>
+                🔴 Puntos de Venta Inactivos / De Baja
               </button>
-              <button className="prompt-pill" onClick={() => handleSendQuery('¿Cómo genero mi archivo CSR para facturación electrónica?')}>
-                🔐 Generar CSR OpenSSL
+              <button className="prompt-pill" onClick={() => handleSendQuery('Consulta TODOS mis puntos de venta en ARCA')}>
+                📑 Todos los Puntos de Venta
               </button>
             </div>
 
@@ -275,6 +307,31 @@ Total Puntos de Venta Vigentes: 3 (Verificado en ARCA/AFIP)`
                     {m.podId && <span className="pod-badge">🤖 {m.podId}</span>}
                     <div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
                     
+                    {/* Interactive Filter Pills inside Puntos de Venta bot messages */}
+                    {m.sender === 'bot' && m.podId === 'POD_AFIP_FISCAL' && (
+                      <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>🔍 Seleccionar Filtro:</span>
+                        <button
+                          style={{ background: '#059669', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => handleSendQuery('Consulta mis puntos de venta ACTIVOS en ARCA')}
+                        >
+                          🟢 Solo Activos
+                        </button>
+                        <button
+                          style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => handleSendQuery('Consulta mis puntos de venta INACTIVOS en ARCA')}
+                        >
+                          🔴 Inactivos / De Baja
+                        </button>
+                        <button
+                          style={{ background: '#475569', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => handleSendQuery('Consulta TODOS mis puntos de venta en ARCA')}
+                        >
+                          📑 Todos
+                        </button>
+                      </div>
+                    )}
+
                     {m.citations && m.citations.length > 0 && (
                       <div className="citations-box" style={{ marginTop: '8px', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
                         <strong>📌 Citas Verificadas:</strong>
@@ -301,13 +358,7 @@ Total Puntos de Venta Vigentes: 3 (Verificado en ARCA/AFIP)`
                           <div style={{ marginTop: '10px', background: '#0f172a', padding: '10px', borderRadius: '6px', border: '1px solid #059669' }}>
                             <div style={{ fontWeight: 'bold', color: '#34d399', fontSize: '0.85rem', marginBottom: '4px' }}>📍 Resultado Real Obtenido de ARCA:</div>
                             <pre style={{ margin: 0, fontSize: '0.8rem', color: '#a7f3d0', whiteSpace: 'pre-wrap' }}>
-                              {m.dryRun.execution_result || `📍 PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO
-PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services   | Estado: ACTIVO
-PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO
---------------------------------------------------------------------------------
-Total Puntos de Venta Vigentes: 3 (Verificado en ARCA/AFIP)`}
+                              {getFilteredOutput(m.dryRun.generated_command, m.dryRun.execution_result)}
                             </pre>
                           </div>
                         )}
@@ -334,7 +385,7 @@ Total Puntos de Venta Vigentes: 3 (Verificado en ARCA/AFIP)`}
             <form onSubmit={(e) => { e.preventDefault(); handleSendQuery(); }} className="chat-input-form">
               <input
                 type="text"
-                placeholder="Escriba su pregunta sobre facturación, retenciones o despliegues..."
+                placeholder="Escriba su pregunta sobre facturación, retenciones o puntos de venta (ej: 'ver inactivos')..."
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 disabled={session.query_count >= session.max_queries || loading}

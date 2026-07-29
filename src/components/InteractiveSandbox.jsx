@@ -209,52 +209,54 @@ export default function InteractiveSandbox({ onShowConversion }) {
 
   const getFilteredOutput = (cmd, rawResult) => {
     if (rawResult) return rawResult;
-    const lowerCmd = (cmd || '').toLowerCase();
 
-    if (lowerCmd.includes('rece')) {
-      return `🎯 RESULTADO ESPECÍFICO: PUNTO DE VENTA TIPO RECE (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services | Estado: ACTIVO 🟢
---------------------------------------------------------------------------------
-Detalle: Punto de Venta configurado para Facturación Electrónica mediante API/WS`;
-    } else if (lowerCmd.includes('linea')) {
-      return `🎯 RESULTADO ESPECÍFICO: PUNTO DE VENTA COMPROBANTES EN LÍNEA (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO 🟢
---------------------------------------------------------------------------------
-Detalle: Punto de Venta para emisión manual desde portal ARCA Clave Fiscal`;
-    } else if (lowerCmd.includes('odoo')) {
-      return `🎯 RESULTADO ESPECÍFICO: PUNTO DE VENTA ODOO PRODUCTION (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO 🟢
---------------------------------------------------------------------------------
-Detalle: Conector ERP Odoo sincronizado con Web Services AFIP/ARCA`;
-    } else if (lowerCmd.includes('inactivo') || lowerCmd.includes('baja')) {
-      return `📍 PUNTOS DE VENTA INACTIVOS / DADOS DE BAJA EN ARCA (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00003 | Tipo: FactuWeb Histórico (Deprecado 2021)    | Estado: DADO DE BAJA
-PV N° 00005 | Tipo: Controlador Fiscal Sucursal Belgrano   | Estado: INACTIVO
---------------------------------------------------------------------------------
-Total Puntos de Venta Inactivos: 2 (Verificado en ARCA/AFIP)`;
-    } else if (lowerCmd.includes('todos') || lowerCmd.includes('completo')) {
-      return `📍 TODOS LOS PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO
-PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services   | Estado: ACTIVO
-PV N° 00003 | Tipo: FactuWeb Histórico (Deprecado 2021)    | Estado: DADO DE BAJA
-PV N° 00005 | Tipo: Controlador Fiscal Sucursal Belgrano   | Estado: INACTIVO
-PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO
---------------------------------------------------------------------------------
-Total Puntos de Venta Registrados: 5 (3 Activos, 2 Inactivos)`;
+    const datasetPV = [
+      { numero: '00001', tipo: 'Comprobantes en Línea - Mercado Interno', estado: 'ACTIVO' },
+      { numero: '00002', tipo: 'RECE para aplicativo y/o Web Services', estado: 'ACTIVO' },
+      { numero: '00003', tipo: 'FactuWeb Histórico (Deprecado 2021)', estado: 'DADO DE BAJA' },
+      { numero: '00005', tipo: 'Controlador Fiscal Sucursal Belgrano', estado: 'INACTIVO' },
+      { numero: '00007', tipo: 'Factura Electrónica - Odoo Production', estado: 'ACTIVO' }
+    ];
+
+    const lowerCmd = (cmd || '').toLowerCase();
+    
+    let queryTerm = '';
+    const matchQuery = lowerCmd.match(/--query="([^"]+)"/);
+    if (matchQuery && matchQuery[1]) {
+      queryTerm = matchQuery[1].toLowerCase().trim();
     } else {
-      return `📍 PUNTOS DE VENTA ACTIVOS EN ARCA (CUIT 20262534538)
---------------------------------------------------------------------------------
-PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO
-PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services   | Estado: ACTIVO
-PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO
---------------------------------------------------------------------------------
-Total Puntos de Venta Activos: 3 (Verificado en ARCA/AFIP)`;
+      queryTerm = lowerCmd;
     }
+
+    if (queryTerm.includes('inactivo') || queryTerm.includes('baja')) {
+      const filtered = datasetPV.filter(pv => pv.estado !== 'ACTIVO');
+      const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
+      return `📍 PUNTOS DE VENTA INACTIVOS / DADOS DE BAJA EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Inactivos: ${filtered.length}`;
+    }
+
+    if (queryTerm.includes('todos') || queryTerm.includes('completo')) {
+      const lines = datasetPV.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
+      return `📍 TODOS LOS PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Registrados: ${datasetPV.length}`;
+    }
+
+    // 3-Column Search: Número, Tipo, Estado
+    const matches = datasetPV.filter(pv => 
+      pv.numero.toLowerCase().includes(queryTerm) ||
+      pv.tipo.toLowerCase().includes(queryTerm) ||
+      pv.estado.toLowerCase().includes(queryTerm) ||
+      queryTerm.includes(pv.numero.toLowerCase()) ||
+      queryTerm.includes(pv.tipo.toLowerCase()) ||
+      queryTerm.includes(pv.estado.toLowerCase())
+    );
+
+    if (matches.length > 0 && queryTerm !== 'activos' && queryTerm !== 'activo') {
+      const lines = matches.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
+      return `🔍 BÚSQUEDA MULTICOLUMNA ARCA ('${queryTerm}')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Coincidencias Encontradas: ${matches.length} (Columnas: Número, Tipo, Estado)`;
+    }
+
+    const activePV = datasetPV.filter(pv => pv.estado === 'ACTIVO');
+    const lines = activePV.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
+    return `📍 PUNTOS DE VENTA ACTIVOS EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Activos: ${activePV.length}`;
   };
 
   return (

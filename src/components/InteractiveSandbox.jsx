@@ -210,8 +210,26 @@ export default function InteractiveSandbox({ onShowConversion }) {
   const getFilteredOutput = (cmd, rawResult) => {
     if (rawResult) return rawResult;
     const lowerCmd = (cmd || '').toLowerCase();
-    
-    if (lowerCmd.includes('inactivo') || lowerCmd.includes('baja')) {
+
+    if (lowerCmd.includes('rece')) {
+      return `🎯 RESULTADO ESPECÍFICO: PUNTO DE VENTA TIPO RECE (CUIT 20262534538)
+--------------------------------------------------------------------------------
+PV N° 00002 | Tipo: RECE para aplicativo y/o Web Services | Estado: ACTIVO 🟢
+--------------------------------------------------------------------------------
+Detalle: Punto de Venta configurado para Facturación Electrónica mediante API/WS`;
+    } else if (lowerCmd.includes('linea')) {
+      return `🎯 RESULTADO ESPECÍFICO: PUNTO DE VENTA COMPROBANTES EN LÍNEA (CUIT 20262534538)
+--------------------------------------------------------------------------------
+PV N° 00001 | Tipo: Comprobantes en Línea - Mercado Interno | Estado: ACTIVO 🟢
+--------------------------------------------------------------------------------
+Detalle: Punto de Venta para emisión manual desde portal ARCA Clave Fiscal`;
+    } else if (lowerCmd.includes('odoo')) {
+      return `🎯 RESULTADO ESPECÍFICO: PUNTO DE VENTA ODOO PRODUCTION (CUIT 20262534538)
+--------------------------------------------------------------------------------
+PV N° 00007 | Tipo: Factura Electrónica - Odoo Production   | Estado: ACTIVO 🟢
+--------------------------------------------------------------------------------
+Detalle: Conector ERP Odoo sincronizado con Web Services AFIP/ARCA`;
+    } else if (lowerCmd.includes('inactivo') || lowerCmd.includes('baja')) {
       return `📍 PUNTOS DE VENTA INACTIVOS / DADOS DE BAJA EN ARCA (CUIT 20262534538)
 --------------------------------------------------------------------------------
 PV N° 00003 | Tipo: FactuWeb Histórico (Deprecado 2021)    | Estado: DADO DE BAJA

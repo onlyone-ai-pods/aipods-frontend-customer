@@ -83,19 +83,26 @@ export default function InteractiveSandbox({ onShowConversion }) {
     } catch (err) {
       const newCount = session.query_count + 1;
       setSession({ ...session, query_count: newCount });
+
+      const isPV = textToSend.toLowerCase().includes('puntos de venta') || textToSend.toLowerCase().includes('pv');
+      const actionName = isPV ? 'gestionar_puntos_de_venta_arca' : 'descargar_retenciones_arca';
+      const summaryText = isPV ? 'Simulación de consulta de Puntos de Venta en ARCA (Administración de PV).' : 'Simulación de consulta de retenciones/percepciones en ARCA (Mirequa).';
+      const cmdText = isPV ? 'node scripts/puntos_de_venta_arca.js --accion=Consultar --cuit=20262534538' : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
+      const docCitation = isPV ? 'ARCA_PuntosDeVenta_Spec_v2026.pdf' : 'ARCA_MisRetenciones_Spec_v2026.pdf';
+
       setMessages(prev => [
         ...prev,
         {
           sender: 'bot',
           podId: 'POD_AFIP_FISCAL',
-          text: `### 📄 Resultado de Consulta en ARCA - Mis Comprobantes\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).`,
-          citations: ['ARCA_MisComprobantes_Spec_v2026.pdf'],
+          text: `### 📄 Resultado de Consulta en ARCA - Puntos de Venta\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).`,
+          citations: [docCitation],
           dryRun: {
             is_dry_run: true,
-            action_name: 'descargar_retenciones_arca',
-            summary: 'Simulación de consulta de retenciones/percepciones en ARCA (Mirequa).',
+            action_name: actionName,
+            summary: summaryText,
             approval_token: 'dryrun_token_sha256_mock99120',
-            generated_command: 'node scripts/mis_retenciones_arca.js --cuit=20262534538'
+            generated_command: cmdText
           }
         }
       ]);

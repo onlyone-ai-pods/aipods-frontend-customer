@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/assets/aipods_banner_frontend_customer.jpg" alt="AI Pods Frontend Customer by OnlyOne" width="100%" style="border-radius: 8px;">
+</p>
+
 # 🌐 AI Pods Enterprise (SaaS) - Customer Portal & Sandbox (`aipods-frontend-customer`)
 
 Este repositorio contiene la aplicación web en **React 18 / Vite** del Portal Público de Clientes, Landing Page bajo el paradigma de **"Servicio como Software" (Service-as-Software)**, Sandbox interactivo sin necesidad de login y el Dashboard post-autenticación.

@@ -1,4 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+const datasetPV = [
+  { numero: '00001', tipo: 'Comprobantes en Línea - Mercado Interno', estado: 'ACTIVO' },
+  { numero: '00002', tipo: 'RECE para aplicativo y/o Web Services', estado: 'ACTIVO' },
+  { numero: '00003', tipo: 'FactuWeb Histórico (Deprecado 2021)', estado: 'DADO DE BAJA' },
+  { numero: '00005', tipo: 'Controlador Fiscal Sucursal Belgrano', estado: 'INACTIVO' },
+  { numero: '00007', tipo: 'Factura Electrónica - Odoo Production', estado: 'ACTIVO' }
+];
+
+function getStatusBadge(estado) {
+  if (estado === 'ACTIVO') return <span className="status-badge activo">🟢 {estado}</span>;
+  if (estado === 'INACTIVO') return <span className="status-badge inactivo">🟡 {estado}</span>;
+  return <span className="status-badge baja">🔴 {estado}</span>;
+}
+
+function filterDataset(query) {
+  const lower = (query || '').toLowerCase();
+  if (lower.includes('odoo')) return { rows: datasetPV.filter(pv => pv.tipo.toLowerCase().includes('odoo')), label: 'Odoo' };
+  if (lower.includes('rece') || lower.includes('web service')) return { rows: datasetPV.filter(pv => pv.tipo.toLowerCase().includes('rece')), label: 'RECE' };
+  if (lower.includes('belgrano') || lower.includes('controlador')) return { rows: datasetPV.filter(pv => pv.tipo.toLowerCase().includes('belgrano') || pv.tipo.toLowerCase().includes('controlador')), label: 'Sucursal Belgrano' };
+  if (lower.includes('linea')) return { rows: datasetPV.filter(pv => pv.tipo.toLowerCase().includes('línea') || pv.tipo.toLowerCase().includes('linea')), label: 'Comprobantes en Línea' };
+  if (lower.includes('inactivo') || lower.includes('baja') || lower.includes('desactivado')) return { rows: datasetPV.filter(pv => pv.estado !== 'ACTIVO'), label: 'Inactivos / Dados de Baja' };
+  if (lower.includes('todos') || lower.includes('completo')) return { rows: datasetPV, label: 'Todos' };
+  // 3-column search fallback
+  const matches = datasetPV.filter(pv =>
+    pv.numero.toLowerCase().includes(lower) ||
+    pv.tipo.toLowerCase().includes(lower) ||
+    pv.estado.toLowerCase().includes(lower)
+  );
+  if (matches.length > 0 && lower !== 'activos' && lower !== 'activo') return { rows: matches, label: query };
+  return { rows: datasetPV.filter(pv => pv.estado === 'ACTIVO'), label: 'Activos' };
+}
+
+function ResultTable({ rows, label, showExport }) {
+  const handleExportCSV = () => {
+    const header = 'Numero,Tipo,Estado\n';
+    const csv = header + rows.map(r => `${r.numero},"${r.tipo}",${r.estado}`).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `puntos_de_venta_${label.replace(/\s/g, '_').toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div>
+      <table className="result-table">
+        <thead>
+          <tr>
+            <th>N° PV</th>
+            <th>Tipo de Punto de Venta</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((pv, i) => (
+            <tr key={i}>
+              <td style={{ fontWeight: 600, color: '#00f2fe' }}>{pv.numero}</td>
+              <td>{pv.tipo}</td>
+              <td>{getStatusBadge(pv.estado)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="result-summary-footer">
+        <span>🔍 Búsqueda: <strong style={{ color: '#00f2fe' }}>&apos;{label}&apos;</strong> — {rows.length} coincidencia{rows.length !== 1 ? 's' : ''}</span>
+        {showExport && (
+          <button className="btn-export-csv" onClick={handleExportCSV}>
+            📥 Exportar CSV
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="typing-indicator">
+      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>🤖 AI Pod analizando</span>
+      <div className="typing-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  );
+}
+
+function KPIDashboard() {
+  const activos = datasetPV.filter(pv => pv.estado === 'ACTIVO').length;
+  const inactivos = datasetPV.filter(pv => pv.estado === 'INACTIVO').length;
+  const baja = datasetPV.filter(pv => pv.estado === 'DADO DE BAJA').length;
+  return (
+    <div className="kpi-dashboard">
+      <div className="kpi-item">
+        <span className="kpi-value green">{activos}</span> PV Activos
+      </div>
+      <div className="kpi-item">
+        <span className="kpi-value yellow">{inactivos}</span> Inactivos
+      </div>
+      <div className="kpi-item">
+        <span className="kpi-value red">{baja}</span> Dados de Baja
+      </div>
+      <div className="kpi-item">
+        <span className="kpi-value blue">{datasetPV.length}</span> Total Registrados
+      </div>
+    </div>
+  );
+}
 
 export default function InteractiveSandbox() {
   const [session, setSession] = useState(null);
@@ -6,6 +118,14 @@ export default function InteractiveSandbox() {
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const chatEndRef = useRef(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, loading]);
 
   // Polling to sync Admin approvals live back to Customer chat screen
   useEffect(() => {
@@ -65,7 +185,7 @@ export default function InteractiveSandbox() {
       setMessages([
         {
           sender: 'system',
-          text: `📄 Documentación "${data.session.file_name}" procesada e indexada en espacio Sandbox Multi-Formato (${data.session.tenant_id}). Tienes 3 preguntas de prueba gratuitas.`
+          text: `📄 Documentación "${data.session.file_name}" procesada e indexada en espacio Sandbox Multi-Formato (${data.session.tenant_id}).`
         }
       ]);
     } catch (err) {
@@ -80,7 +200,7 @@ export default function InteractiveSandbox() {
       setMessages([
         {
           sender: 'system',
-          text: `📄 Documentación "${mockSession.file_name}" cargada en Sandbox. Consola interactiva de prueba ilimitada activa.`
+          text: `📄 Documentación "${mockSession.file_name}" cargada en Sandbox. Consola interactiva ilimitada activa.`
         }
       ]);
     } finally {
@@ -113,7 +233,8 @@ export default function InteractiveSandbox() {
             podId: data.response.pod_id,
             text: data.response.answer,
             citations: data.response.citations,
-            dryRun: data.response.dry_run_result
+            dryRun: data.response.dry_run_result,
+            searchQuery: textToSend
           }
         ]);
       } else {
@@ -129,7 +250,7 @@ export default function InteractiveSandbox() {
 
       const cmdText = isPV ? `node scripts/puntos_de_venta_arca.js --accion=Consultar --query="${textToSend}" --cuit=20262534538` : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
       const actionName = isPV ? 'gestionar_puntos_de_venta_arca' : 'descargar_retenciones_arca';
-      const summaryText = isPV ? `Simulación de búsqueda de Puntos de Venta ('${textToSend}') en ARCA.` : 'Simulación de consulta de retenciones en ARCA.';
+      const summaryText = isPV ? `Búsqueda de Puntos de Venta ('${textToSend}') en ARCA.` : 'Consulta de retenciones en ARCA.';
       const docCitation = isPV ? 'ARCA_PuntosDeVenta_Spec_v2026.pdf' : 'ARCA_MisRetenciones_Spec_v2026.pdf';
 
       setMessages(prev => [
@@ -137,8 +258,9 @@ export default function InteractiveSandbox() {
         {
           sender: 'bot',
           podId: 'POD_AFIP_FISCAL',
-          text: `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (` + '`dry_run = true`' + `).\n\n💡 *Puedes filtrar desde esta consola escribiendo: 'ver odoo', 'ver rece', 'ver inactivos' o 'ver todos'.*`,
+          text: `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).\n\n💡 *Puedes buscar por texto libre: 'ver odoo', 'rece', '00007', 'inactivos' o 'todos'.*`,
           citations: [docCitation],
+          searchQuery: textToSend,
           dryRun: {
             is_dry_run: true,
             action_name: actionName,
@@ -196,74 +318,11 @@ export default function InteractiveSandbox() {
     }
   };
 
-  const getFilteredOutput = (cmd, rawResult) => {
-    const datasetPV = [
-      { numero: '00001', tipo: 'Comprobantes en Línea - Mercado Interno', estado: 'ACTIVO' },
-      { numero: '00002', tipo: 'RECE para aplicativo y/o Web Services', estado: 'ACTIVO' },
-      { numero: '00003', tipo: 'FactuWeb Histórico (Deprecado 2021)', estado: 'DADO DE BAJA' },
-      { numero: '00005', tipo: 'Controlador Fiscal Sucursal Belgrano', estado: 'INACTIVO' },
-      { numero: '00007', tipo: 'Factura Electrónica - Odoo Production', estado: 'ACTIVO' }
-    ];
-
-    const lowerCmd = (cmd || '').toLowerCase();
-    
-    let queryTerm = '';
-    const matchQuery = lowerCmd.match(/--query="([^"]+)"/);
-    if (matchQuery && matchQuery[1]) {
-      queryTerm = matchQuery[1].toLowerCase().trim();
-    } else {
-      queryTerm = lowerCmd;
-    }
-
-    if (queryTerm.includes('odoo')) {
-      const filtered = datasetPV.filter(pv => pv.tipo.toLowerCase().includes('odoo'));
-      const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 RESULTADO DE BÚSQUEDA EN ARCA ('Odoo')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
-    }
-
-    if (queryTerm.includes('rece') || queryTerm.includes('web service')) {
-      const filtered = datasetPV.filter(pv => pv.tipo.toLowerCase().includes('rece'));
-      const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 RESULTADO DE BÚSQUEDA EN ARCA ('RECE')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
-    }
-
-    if (queryTerm.includes('linea')) {
-      const filtered = datasetPV.filter(pv => pv.tipo.toLowerCase().includes('línea') || pv.tipo.toLowerCase().includes('linea'));
-      const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 RESULTADO DE BÚSQUEDA EN ARCA ('Comprobantes en Línea')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nCoincidencias encontradas: ${filtered.length} (Verificado en ARCA/AFIP)`;
-    }
-
-    if (queryTerm.includes('inactivo') || queryTerm.includes('baja')) {
-      const filtered = datasetPV.filter(pv => pv.estado !== 'ACTIVO');
-      const lines = filtered.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `📍 PUNTOS DE VENTA INACTIVOS / DADOS DE BAJA EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Inactivos: ${filtered.length}`;
-    }
-
-    if (queryTerm.includes('todos') || queryTerm.includes('completo')) {
-      const lines = datasetPV.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `📍 TODOS LOS PUNTOS DE VENTA REGISTRADOS EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Registrados: ${datasetPV.length}`;
-    }
-
-    if (rawResult && rawResult.includes("Coincidencias encontradas")) return rawResult;
-
-    // 3-Column Search: Número, Tipo, Estado
-    const matches = datasetPV.filter(pv => 
-      pv.numero.toLowerCase().includes(queryTerm) ||
-      pv.tipo.toLowerCase().includes(queryTerm) ||
-      pv.estado.toLowerCase().includes(queryTerm) ||
-      queryTerm.includes(pv.numero.toLowerCase()) ||
-      queryTerm.includes(pv.tipo.toLowerCase()) ||
-      queryTerm.includes(pv.estado.toLowerCase())
-    );
-
-    if (matches.length > 0 && queryTerm !== 'activos' && queryTerm !== 'activo') {
-      const lines = matches.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-      return `🔍 BÚSQUEDA MULTICOLUMNA ARCA ('${queryTerm}')\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Coincidencias Encontradas: ${matches.length} (Columnas: Número, Tipo, Estado)`;
-    }
-
-    const activePV = datasetPV.filter(pv => pv.estado === 'ACTIVO');
-    const lines = activePV.map(pv => `PV N° ${pv.numero} | Tipo: ${pv.tipo.padEnd(45)} | Estado: ${pv.estado}`);
-    return `📍 PUNTOS DE VENTA ACTIVOS EN ARCA (CUIT 20262534538)\n--------------------------------------------------------------------------------\n${lines.join('\n')}\n--------------------------------------------------------------------------------\nTotal Puntos de Venta Activos: ${activePV.length}`;
+  const getSearchQuery = (msg) => {
+    if (msg.searchQuery) return msg.searchQuery;
+    const cmd = msg.dryRun?.generated_command || '';
+    const match = cmd.match(/--query="([^"]+)"/);
+    return match ? match[1] : 'Activos';
   };
 
   return (
@@ -306,21 +365,30 @@ export default function InteractiveSandbox() {
             <div className="sandbox-status-bar">
               <span>📄 Documento / Pod Activo: <strong>{session.file_name}</strong></span>
               <span className="query-counter">
-                Consultas de prueba usadas: <strong>{session.query_count} / {session.max_queries}</strong>
+                Consultas: <strong>{session.query_count}</strong>
               </span>
             </div>
+
+            {/* KPI Dashboard */}
+            <KPIDashboard />
 
             {/* Quick Prompt Suggestions */}
             <div className="quick-prompts" style={{ display: 'flex', gap: '8px', padding: '10px 16px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.85rem', color: '#94a3b8', alignSelf: 'center' }}>💡 Consultas Rápidas:</span>
               <button className="prompt-pill" onClick={() => handleSendQuery('Consulta mis puntos de venta ACTIVOS en ARCA')}>
-                🟢 Puntos de Venta Activos
+                🟢 Activos
               </button>
               <button className="prompt-pill" onClick={() => handleSendQuery('Consulta mis puntos de venta INACTIVOS en ARCA')}>
-                🔴 Puntos de Venta Inactivos / De Baja
+                🔴 Inactivos / De Baja
               </button>
               <button className="prompt-pill" onClick={() => handleSendQuery('Consulta TODOS mis puntos de venta en ARCA')}>
-                📑 Todos los Puntos de Venta
+                📑 Todos
+              </button>
+              <button className="prompt-pill" onClick={() => handleSendQuery('ver odoo')}>
+                🏭 Odoo
+              </button>
+              <button className="prompt-pill" onClick={() => handleSendQuery('ver rece')}>
+                📝 RECE
               </button>
             </div>
 
@@ -330,89 +398,77 @@ export default function InteractiveSandbox() {
                 const isApproved = m.dryRun && m.dryRun.status === 'APPROVED';
 
                 return (
-                  <div key={idx} className={`message-bubble ${m.sender}`}>
-                    {m.podId && <span className="pod-badge">🤖 {m.podId}</span>}
-                    <div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-                    
-                    {/* Interactive Filter Pills inside Puntos de Venta bot messages */}
-                    {m.sender === 'bot' && m.podId === 'POD_AFIP_FISCAL' && (
-                      <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>🔍 Seleccionar Filtro:</span>
-                        <button
-                          style={{ background: '#059669', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
-                          onClick={() => handleSendQuery('Consulta mis puntos de venta ACTIVOS en ARCA')}
-                        >
-                          🟢 Solo Activos
-                        </button>
-                        <button
-                          style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
-                          onClick={() => handleSendQuery('Consulta mis puntos de venta INACTIVOS en ARCA')}
-                        >
-                          🔴 Inactivos / De Baja
-                        </button>
-                        <button
-                          style={{ background: '#475569', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
-                          onClick={() => handleSendQuery('Consulta TODOS mis puntos de venta en ARCA')}
-                        >
-                          📑 Todos
-                        </button>
-                      </div>
-                    )}
+                  <div key={idx} className={`message-row ${m.sender}`}>
+                    {/* Avatar */}
+                    {m.sender === 'bot' && <div className="message-avatar bot-avatar">🤖</div>}
+                    {m.sender === 'user' && <div className="message-avatar user-avatar">👤</div>}
 
-                    {m.citations && m.citations.length > 0 && (
-                      <div className="citations-box" style={{ marginTop: '8px', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
-                        <strong>📌 Citas Verificadas:</strong>
-                        <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
-                          {m.citations.map((c, i) => <li key={i}>{c}</li>)}
-                        </ul>
-                      </div>
-                    )}
-
-                    {m.dryRun && m.dryRun.is_dry_run && (
-                      <div className="dryrun-card" style={{ marginTop: '12px', padding: '12px', background: isApproved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)', border: isApproved ? '1px solid #10b981' : '1px solid #f59e0b', borderRadius: '8px' }}>
-                        <div style={{ fontWeight: 'bold', color: isApproved ? '#34d399' : '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>{isApproved ? '🎉 Aprobado por Administrador — Ejecución Real Completada' : '⚡ Simulación Dry-Run (`dry_run = true`)'}</span>
+                    <div className={`message-bubble ${m.sender}`} style={m.sender === 'system' ? { alignSelf: 'center' } : {}}>
+                      {m.podId && <span className="pod-badge">🤖 {m.podId}</span>}
+                      <div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                      
+                      {m.citations && m.citations.length > 0 && (
+                        <div className="citations-box" style={{ marginTop: '8px', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                          <strong>📌 Citas Verificadas:</strong>
+                          <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                            {m.citations.map((c, i) => <li key={i}>{c}</li>)}
+                          </ul>
                         </div>
-                        <p style={{ margin: '6px 0', fontSize: '0.9rem' }}>{m.dryRun.summary}</p>
-                        {m.dryRun.generated_command && (
-                          <pre style={{ background: '#0f172a', padding: '8px', borderRadius: '4px', fontSize: '0.8rem', color: '#38bdf8', overflowX: 'auto' }}>
-                            {m.dryRun.generated_command}
-                          </pre>
-                        )}
+                      )}
 
-                        {/* Display live execution result if approved */}
-                        {isApproved && (
-                          <div style={{ marginTop: '10px', background: '#0f172a', padding: '10px', borderRadius: '6px', border: '1px solid #059669' }}>
-                            <div style={{ fontWeight: 'bold', color: '#34d399', fontSize: '0.85rem', marginBottom: '4px' }}>📍 Resultado Real Obtenido de ARCA:</div>
-                            <pre style={{ margin: 0, fontSize: '0.8rem', color: '#a7f3d0', whiteSpace: 'pre-wrap' }}>
-                              {getFilteredOutput(m.dryRun.generated_command, m.dryRun.execution_result)}
+                      {m.dryRun && m.dryRun.is_dry_run && (
+                        <div className="dryrun-card" style={{ marginTop: '12px', padding: '12px', background: isApproved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)', border: isApproved ? '1px solid #10b981' : '1px solid #f59e0b', borderRadius: '8px' }}>
+                          <div style={{ fontWeight: 'bold', color: isApproved ? '#34d399' : '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>{isApproved ? '🎉 Aprobado por Administrador — Ejecución Real Completada' : '⚡ Simulación Dry-Run (`dry_run = true`)'}</span>
+                          </div>
+                          <p style={{ margin: '6px 0', fontSize: '0.9rem' }}>{m.dryRun.summary}</p>
+                          {m.dryRun.generated_command && (
+                            <pre style={{ background: '#0f172a', padding: '8px', borderRadius: '4px', fontSize: '0.8rem', color: '#38bdf8', overflowX: 'auto' }}>
+                              {m.dryRun.generated_command}
                             </pre>
-                          </div>
-                        )}
+                          )}
 
-                        {token && !isApproved && (
-                          <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Token: <code>{token}</code></span>
-                            <button
-                              style={{ background: '#f59e0b', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}
-                              onClick={() => handleSendToAdmin(token)}
-                            >
-                              ⚡ Ejecutar / Aprobar Acción en Vivo
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          {/* Display live execution result as HTML Table */}
+                          {isApproved && (
+                            <div style={{ marginTop: '10px', background: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid #059669' }}>
+                              <div style={{ fontWeight: 'bold', color: '#34d399', fontSize: '0.85rem', marginBottom: '8px' }}>📍 Resultado Real Obtenido de ARCA:</div>
+                              <ResultTable rows={filterDataset(getSearchQuery(m)).rows} label={filterDataset(getSearchQuery(m)).label} showExport={true} />
+                            </div>
+                          )}
+
+                          {/* Inline preview table for dry-run */}
+                          {!isApproved && (
+                            <div style={{ marginTop: '10px', background: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                              <div style={{ fontWeight: 'bold', color: '#fbbf24', fontSize: '0.85rem', marginBottom: '8px' }}>👁️ Vista Previa (Datos a Consultar):</div>
+                              <ResultTable rows={filterDataset(getSearchQuery(m)).rows} label={filterDataset(getSearchQuery(m)).label} showExport={false} />
+                            </div>
+                          )}
+
+                          {token && !isApproved && (
+                            <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Token: <code>{token}</code></span>
+                              <button
+                                style={{ background: '#f59e0b', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}
+                                onClick={() => handleSendToAdmin(token)}
+                              >
+                                ⚡ Ejecutar / Aprobar Acción en Vivo
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
-              {loading && <div className="message-bubble bot loading">Procesando consulta con AI Pod en tiempo real...</div>}
+              {loading && <TypingIndicator />}
+              <div ref={chatEndRef} />
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); handleSendQuery(); }} className="chat-input-form">
               <input
                 type="text"
-                placeholder="Escriba su pregunta sobre facturación, retenciones o puntos de venta (ej: 'ver odoo', '00002')..."
+                placeholder="Escriba su consulta (ej: 'ver odoo', 'rece', '00007', 'inactivos', 'todos')..."
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 disabled={loading}

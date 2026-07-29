@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function InteractiveSandbox({ onShowConversion }) {
+export default function InteractiveSandbox() {
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputQuery, setInputQuery] = useState('');
@@ -74,13 +74,13 @@ export default function InteractiveSandbox({ onShowConversion }) {
         tenant_id: 'sandbox_session_mock',
         file_name: fileName || 'Guia_AFIP_ARCA_2026.pdf',
         query_count: 0,
-        max_queries: 3
+        max_queries: 999
       };
       setSession(mockSession);
       setMessages([
         {
           sender: 'system',
-          text: `📄 Documentación "${mockSession.file_name}" cargada en Sandbox de prueba Multi-Formato. Tienes 3 consultas gratuitas.`
+          text: `📄 Documentación "${mockSession.file_name}" cargada en Sandbox. Consola interactiva de prueba ilimitada activa.`
         }
       ]);
     } finally {
@@ -91,11 +91,6 @@ export default function InteractiveSandbox({ onShowConversion }) {
   const handleSendQuery = async (userQuery) => {
     const textToSend = userQuery || inputQuery;
     if (!textToSend.trim() || !session) return;
-
-    if (session.query_count >= session.max_queries) {
-      if (onShowConversion) onShowConversion();
-      return;
-    }
 
     setInputQuery('');
     setMessages(prev => [...prev, { sender: 'user', text: textToSend }]);
@@ -405,12 +400,12 @@ export default function InteractiveSandbox({ onShowConversion }) {
             <form onSubmit={(e) => { e.preventDefault(); handleSendQuery(); }} className="chat-input-form">
               <input
                 type="text"
-                placeholder="Escriba su pregunta sobre facturación, retenciones o puntos de venta (ej: 'ver inactivos')..."
+                placeholder="Escriba su pregunta sobre facturación, retenciones o puntos de venta (ej: 'ver odoo', '00002')..."
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
-                disabled={session.query_count >= session.max_queries || loading}
+                disabled={loading}
               />
-              <button type="submit" className="btn-primary" disabled={session.query_count >= session.max_queries || loading}>
+              <button type="submit" className="btn-primary" disabled={loading}>
                 Enviar
               </button>
             </form>

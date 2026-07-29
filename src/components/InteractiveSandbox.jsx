@@ -9,8 +9,8 @@ const datasetPV = [
 ];
 
 function getStatusBadge(estado) {
-  if (estado === 'ACTIVO') return <span className="status-badge activo">🟢 {estado}</span>;
-  if (estado === 'INACTIVO') return <span className="status-badge inactivo">🟡 {estado}</span>;
+  if (estado === 'ACTIVO' || estado === 'PAGADO') return <span className="status-badge activo">🟢 {estado}</span>;
+  if (estado === 'INACTIVO' || estado === 'PENDIENTE') return <span className="status-badge inactivo">🟡 {estado}</span>;
   return <span className="status-badge baja">🔴 {estado}</span>;
 }
 
@@ -22,7 +22,6 @@ function filterDataset(query) {
   if (lower.includes('linea')) return { rows: datasetPV.filter(pv => pv.tipo.toLowerCase().includes('línea') || pv.tipo.toLowerCase().includes('linea')), label: 'Comprobantes en Línea' };
   if (lower.includes('inactivo') || lower.includes('baja') || lower.includes('desactivado')) return { rows: datasetPV.filter(pv => pv.estado !== 'ACTIVO'), label: 'Inactivos / Dados de Baja' };
   if (lower.includes('todos') || lower.includes('completo')) return { rows: datasetPV, label: 'Todos' };
-  // 3-column search fallback
   const matches = datasetPV.filter(pv =>
     pv.numero.toLowerCase().includes(lower) ||
     pv.tipo.toLowerCase().includes(lower) ||
@@ -30,6 +29,122 @@ function filterDataset(query) {
   );
   if (matches.length > 0 && lower !== 'activos' && lower !== 'activo') return { rows: matches, label: query };
   return { rows: datasetPV.filter(pv => pv.estado === 'ACTIVO'), label: 'Activos' };
+}
+
+// --- Monotributo Dataset ---
+const datasetMonotributo = [
+  { periodo: '07/2026', cuota: '$52.530,48', estado: 'PENDIENTE', fechaPago: '—' },
+  { periodo: '06/2026', cuota: '$52.530,48', estado: 'PAGADO', fechaPago: '18/06/2026' },
+  { periodo: '05/2026', cuota: '$52.530,48', estado: 'PAGADO', fechaPago: '20/05/2026' },
+  { periodo: '04/2026', cuota: '$48.920,00', estado: 'PAGADO', fechaPago: '19/04/2026' },
+  { periodo: '03/2026', cuota: '$48.920,00', estado: 'PAGADO', fechaPago: '20/03/2026' },
+  { periodo: '02/2026', cuota: '$48.920,00', estado: 'ADEUDADO', fechaPago: '—' }
+];
+
+const monotributoInfo = {
+  cuit: '20-26253453-8',
+  categoria: 'K — Servicios',
+  actividad: '620100 - Servicios de consultoría informática',
+  cuotaMensual: '$52.530,48',
+  estado: 'Activo',
+  fechaAlta: '01/03/2015'
+};
+
+const mesesNombre = {
+  '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
+  '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
+  '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
+};
+
+function filterMonotributo(query) {
+  const lower = (query || '').toLowerCase();
+
+  // Check for specific MM/YYYY
+  for (const p of datasetMonotributo) {
+    if (lower.includes(p.periodo.toLowerCase())) return { rows: [p], label: p.periodo, suggestion: '' };
+  }
+
+  // Check month names
+  const mesesMap = { enero:'01', febrero:'02', marzo:'03', abril:'04', mayo:'05', junio:'06', julio:'07', agosto:'08', septiembre:'09', octubre:'10', noviembre:'11', diciembre:'12', ene:'01', feb:'02', mar:'03', abr:'04', may:'05', jun:'06', jul:'07', ago:'08', sep:'09', oct:'10', nov:'11', dic:'12' };
+  for (const [nombre, num] of Object.entries(mesesMap)) {
+    if (lower.includes(nombre)) {
+      const periodo = num + '/2026';
+      const found = datasetMonotributo.filter(p => p.periodo === periodo);
+      if (found.length > 0) return { rows: found, label: periodo, suggestion: '' };
+      return { rows: datasetMonotributo, label: 'Todos', suggestion: `⚠️ El período ${periodo} no está en el estado de cuenta. Períodos disponibles: 02/2026 a 07/2026.` };
+    }
+  }
+
+  // Check for "adeudado" or "pendiente" or "pagado"
+  if (lower.includes('adeudado') || lower.includes('deuda') || lower.includes('debe')) {
+    return { rows: datasetMonotributo.filter(p => p.estado === 'ADEUDADO'), label: 'Adeudados', suggestion: '' };
+  }
+  if (lower.includes('pendiente')) {
+    return { rows: datasetMonotributo.filter(p => p.estado === 'PENDIENTE'), label: 'Pendientes', suggestion: '' };
+  }
+  if (lower.includes('pagado') || lower.includes('al dia') || lower.includes('al día')) {
+    return { rows: datasetMonotributo.filter(p => p.estado === 'PAGADO'), label: 'Pagados', suggestion: '' };
+  }
+
+  return { rows: datasetMonotributo, label: 'Todos', suggestion: '' };
+}
+
+function MonotributoTable({ rows, label, showExport, suggestion }) {
+  const handleExportCSV = () => {
+    const header = 'Periodo,Cuota,Estado,Fecha Pago\n';
+    const csv = header + rows.map(r => `${r.periodo},"${r.cuota}",${r.estado},${r.fechaPago}`).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `monotributo_estado_cuenta_${label.replace(/\//g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div>
+      {/* Info Card */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px', fontSize: '0.78rem' }}>
+        <span style={{ color: '#94a3b8' }}>CUIT: <strong style={{ color: '#e2e8f0' }}>{monotributoInfo.cuit}</strong></span>
+        <span style={{ color: '#94a3b8' }}>Categoría: <strong style={{ color: '#00f2fe' }}>{monotributoInfo.categoria}</strong></span>
+        <span style={{ color: '#94a3b8' }}>Actividad: <strong style={{ color: '#e2e8f0' }}>{monotributoInfo.actividad}</strong></span>
+        <span style={{ color: '#94a3b8' }}>Cuota Mensual: <strong style={{ color: '#34d399' }}>{monotributoInfo.cuotaMensual}</strong></span>
+      </div>
+
+      {suggestion && <div style={{ padding: '8px 12px', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)', borderRadius: '6px', marginBottom: '8px', fontSize: '0.82rem', color: '#fbbf24', whiteSpace: 'pre-wrap' }}>{suggestion}</div>}
+
+      <table className="result-table">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Cuota</th>
+            <th>Estado</th>
+            <th>Fecha Pago</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p, i) => (
+            <tr key={i}>
+              <td style={{ fontWeight: 600, color: '#00f2fe' }}>{mesesNombre[p.periodo.split('/')[0]]} {p.periodo.split('/')[1]}</td>
+              <td>{p.cuota}</td>
+              <td>{getStatusBadge(p.estado)}</td>
+              <td style={{ color: p.fechaPago === '—' ? '#64748b' : '#e2e8f0' }}>{p.fechaPago}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="result-summary-footer">
+        <span>🧾 Estado de Cuenta: <strong style={{ color: '#00f2fe' }}>&apos;{label}&apos;</strong> — {rows.length} período{rows.length !== 1 ? 's' : ''}</span>
+        {showExport && <button className="btn-export-csv" onClick={handleExportCSV}>📥 Exportar CSV</button>}
+      </div>
+    </div>
+  );
+}
+
+function isMonotributoQuery(query) {
+  const lower = (query || '').toLowerCase();
+  return lower.includes('monotributo') || lower.includes('estado de cuenta') || lower.includes('cuota') || lower.includes('categoria') || lower.includes('categoría') || lower.includes('periodo') || lower.includes('período');
 }
 
 function ResultTable({ rows, label, showExport }) {
@@ -94,6 +209,8 @@ function KPIDashboard() {
   const activos = datasetPV.filter(pv => pv.estado === 'ACTIVO').length;
   const inactivos = datasetPV.filter(pv => pv.estado === 'INACTIVO').length;
   const baja = datasetPV.filter(pv => pv.estado === 'DADO DE BAJA').length;
+  const pagados = datasetMonotributo.filter(p => p.estado === 'PAGADO').length;
+  const adeudados = datasetMonotributo.filter(p => p.estado === 'ADEUDADO' || p.estado === 'PENDIENTE').length;
   return (
     <div className="kpi-dashboard">
       <div className="kpi-item">
@@ -103,10 +220,13 @@ function KPIDashboard() {
         <span className="kpi-value yellow">{inactivos}</span> Inactivos
       </div>
       <div className="kpi-item">
-        <span className="kpi-value red">{baja}</span> Dados de Baja
+        <span className="kpi-value red">{baja}</span> De Baja
+      </div>
+      <div className="kpi-item" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '14px' }}>
+        <span className="kpi-value green">{pagados}</span> Cuotas OK
       </div>
       <div className="kpi-item">
-        <span className="kpi-value blue">{datasetPV.length}</span> Total Registrados
+        <span className="kpi-value red">{adeudados}</span> Pendientes
       </div>
     </div>
   );
@@ -245,20 +365,40 @@ export default function InteractiveSandbox() {
       setSession({ ...session, query_count: newCount });
 
       const lower = textToSend.toLowerCase();
-      const isRetenciones = lower.includes('retencion') || lower.includes('retenciones') || lower.includes('percepcion');
-      const isPV = !isRetenciones;
+      const isMono = isMonotributoQuery(textToSend);
+      const isRetenciones = !isMono && (lower.includes('retencion') || lower.includes('retenciones') || lower.includes('percepcion'));
 
-      const cmdText = isPV ? `node scripts/puntos_de_venta_arca.js --accion=Consultar --query="${textToSend}" --cuit=20262534538` : 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
-      const actionName = isPV ? 'gestionar_puntos_de_venta_arca' : 'descargar_retenciones_arca';
-      const summaryText = isPV ? `Búsqueda de Puntos de Venta ('${textToSend}') en ARCA.` : 'Consulta de retenciones en ARCA.';
-      const docCitation = isPV ? 'ARCA_PuntosDeVenta_Spec_v2026.pdf' : 'ARCA_MisRetenciones_Spec_v2026.pdf';
+      let cmdText, actionName, summaryText, docCitation, answerText;
+
+      if (isMono) {
+        const mono = filterMonotributo(textToSend);
+        cmdText = `node scripts/monotributo_estado_cuenta.js --cuit=20262534538 --periodo=${mono.label}`;
+        actionName = 'consultar_monotributo_estado_cuenta';
+        summaryText = `Consulta de Estado de Cuenta Monotributo (Período: ${mono.label}).`;
+        docCitation = 'ARCA_Monotributo_Spec_v2026.pdf';
+        answerText = mono.suggestion
+          ? `### 🧾 Estado de Cuenta Monotributo\n\n${mono.suggestion}\n\n💡 *Puedes filtrar: 'julio', '07/2026', 'adeudado', 'pagado' o 'pendiente'.*`
+          : `### 🧾 Estado de Cuenta Monotributo\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).\n\n💡 *Puedes filtrar por período: 'julio', '07/2026', 'adeudado', 'pagado' o 'pendiente'.*`;
+      } else if (isRetenciones) {
+        cmdText = 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
+        actionName = 'descargar_retenciones_arca';
+        summaryText = 'Consulta de retenciones en ARCA.';
+        docCitation = 'ARCA_MisRetenciones_Spec_v2026.pdf';
+        answerText = `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).`;
+      } else {
+        cmdText = `node scripts/puntos_de_venta_arca.js --accion=Consultar --query="${textToSend}" --cuit=20262534538`;
+        actionName = 'gestionar_puntos_de_venta_arca';
+        summaryText = `Búsqueda de Puntos de Venta ('${textToSend}') en ARCA.`;
+        docCitation = 'ARCA_PuntosDeVenta_Spec_v2026.pdf';
+        answerText = `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).\n\n💡 *Puedes buscar: 'ver odoo', 'rece', '00007', 'inactivos' o 'todos'.*`;
+      }
 
       setMessages(prev => [
         ...prev,
         {
           sender: 'bot',
           podId: 'POD_AFIP_FISCAL',
-          text: `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).\n\n💡 *Puedes buscar por texto libre: 'ver odoo', 'rece', '00007', 'inactivos' o 'todos'.*`,
+          text: answerText,
           citations: [docCitation],
           searchQuery: textToSend,
           dryRun: {
@@ -390,6 +530,16 @@ export default function InteractiveSandbox() {
               <button className="prompt-pill" onClick={() => handleSendQuery('ver rece')}>
                 📝 RECE
               </button>
+              <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', alignSelf: 'center' }}></span>
+              <button className="prompt-pill" onClick={() => handleSendQuery('estado de cuenta monotributo')}>
+                🧾 Monotributo
+              </button>
+              <button className="prompt-pill" onClick={() => handleSendQuery('monotributo periodo julio')}>
+                📅 Julio 2026
+              </button>
+              <button className="prompt-pill" onClick={() => handleSendQuery('monotributo adeudado')}>
+                🔴 Adeudado
+              </button>
             </div>
 
             <div className="chat-messages">
@@ -431,16 +581,22 @@ export default function InteractiveSandbox() {
                           {/* Display live execution result as HTML Table */}
                           {isApproved && (
                             <div style={{ marginTop: '10px', background: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid #059669' }}>
-                              <div style={{ fontWeight: 'bold', color: '#34d399', fontSize: '0.85rem', marginBottom: '8px' }}>📍 Resultado Real Obtenido de ARCA:</div>
-                              <ResultTable rows={filterDataset(getSearchQuery(m)).rows} label={filterDataset(getSearchQuery(m)).label} showExport={true} />
+                              <div style={{ fontWeight: 'bold', color: '#34d399', fontSize: '0.85rem', marginBottom: '8px' }}>{isMonotributoQuery(getSearchQuery(m)) ? '🧾 Estado de Cuenta Monotributo — Resultado Real:' : '📍 Resultado Real Obtenido de ARCA:'}</div>
+                              {isMonotributoQuery(getSearchQuery(m))
+                                ? <MonotributoTable rows={filterMonotributo(getSearchQuery(m)).rows} label={filterMonotributo(getSearchQuery(m)).label} showExport={true} suggestion={filterMonotributo(getSearchQuery(m)).suggestion} />
+                                : <ResultTable rows={filterDataset(getSearchQuery(m)).rows} label={filterDataset(getSearchQuery(m)).label} showExport={true} />
+                              }
                             </div>
                           )}
 
                           {/* Inline preview table for dry-run */}
                           {!isApproved && (
                             <div style={{ marginTop: '10px', background: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                              <div style={{ fontWeight: 'bold', color: '#fbbf24', fontSize: '0.85rem', marginBottom: '8px' }}>👁️ Vista Previa (Datos a Consultar):</div>
-                              <ResultTable rows={filterDataset(getSearchQuery(m)).rows} label={filterDataset(getSearchQuery(m)).label} showExport={false} />
+                              <div style={{ fontWeight: 'bold', color: '#fbbf24', fontSize: '0.85rem', marginBottom: '8px' }}>{isMonotributoQuery(getSearchQuery(m)) ? '👁️ Vista Previa — Estado de Cuenta Monotributo:' : '👁️ Vista Previa (Datos a Consultar):'}</div>
+                              {isMonotributoQuery(getSearchQuery(m))
+                                ? <MonotributoTable rows={filterMonotributo(getSearchQuery(m)).rows} label={filterMonotributo(getSearchQuery(m)).label} showExport={false} suggestion={filterMonotributo(getSearchQuery(m)).suggestion} />
+                                : <ResultTable rows={filterDataset(getSearchQuery(m)).rows} label={filterDataset(getSearchQuery(m)).label} showExport={false} />
+                              }
                             </div>
                           )}
 
@@ -468,7 +624,7 @@ export default function InteractiveSandbox() {
             <form onSubmit={(e) => { e.preventDefault(); handleSendQuery(); }} className="chat-input-form">
               <input
                 type="text"
-                placeholder="Escriba su consulta (ej: 'ver odoo', 'rece', '00007', 'inactivos', 'todos')..."
+                placeholder="Escriba su consulta (ej: 'monotributo', 'julio', 'adeudado', 'ver odoo', 'rece')..."
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 disabled={loading}

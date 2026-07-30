@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import SlashCommandPalette, { POD_COMMANDS } from './SlashCommandPalette';
+import FeedbackButtons from './FeedbackButtons';
 
 const datasetPV = [
   { numero: '00001', tipo: 'Comprobantes en Línea - Mercado Interno', estado: 'ACTIVO' },
@@ -238,7 +240,71 @@ export default function InteractiveSandbox() {
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showSlashPalette, setShowSlashPalette] = useState(false);
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
   const chatEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Slash palette: detect '/' at start of input
+  const handleInputChange = useCallback((e) => {
+    const val = e.target.value;
+    setInputQuery(val);
+    if (val.startsWith('/')) {
+      setShowSlashPalette(true);
+      setSlashActiveIndex(0);
+    } else {
+      setShowSlashPalette(false);
+    }
+  }, []);
+
+  // Get filtered commands count for keyboard nav
+  const getFilteredCommands = useCallback(() => {
+    const allCmds = POD_COMMANDS.POD_AFIP_FISCAL || [];
+    const filterLower = inputQuery.toLowerCase().replace(/^\//, '');
+    return filterLower
+      ? allCmds.filter(c => c.command.toLowerCase().includes(filterLower) || c.label.toLowerCase().includes(filterLower) || c.description.toLowerCase().includes(filterLower))
+      : allCmds;
+  }, [inputQuery]);
+
+  // Keyboard navigation for slash palette
+  const handleKeyDown = useCallback((e) => {
+    if (!showSlashPalette) return;
+    const cmds = getFilteredCommands();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSlashActiveIndex(prev => (prev + 1) % cmds.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSlashActiveIndex(prev => (prev - 1 + cmds.length) % cmds.length);
+    } else if (e.key === 'Enter' && cmds.length > 0) {
+      e.preventDefault();
+      handleSlashSelect(cmds[slashActiveIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSlashPalette(false);
+      setInputQuery('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSlashPalette, slashActiveIndex, getFilteredCommands]);
+
+  // Handle slash command selection
+  const handleSlashSelect = (cmd) => {
+    setShowSlashPalette(false);
+    setInputQuery('');
+    if (cmd.query) {
+      handleSendQuery(cmd.query);
+    } else {
+      // /ayuda → show all commands as a system message
+      const allCmds = POD_COMMANDS.POD_AFIP_FISCAL || [];
+      const helpText = allCmds.map(c => `${c.icon} **${c.command}** — ${c.description}`).join('\n');
+      setMessages(prev => [...prev, { sender: 'system', text: `📋 Comandos disponibles del Pod AFIP/ARCA:\n\n${helpText}\n\nEscribí / para ver esta lista en cualquier momento.` }]);
+    }
+  };
+
+  // Feedback handler (SPEC-CORE-17)
+  // TODO [POST-MVP]: POST /api/v1/feedback → Redis cache purge + audit_logs flag
+  const handleFeedback = (messageId, type, reason) => {
+    console.log('[FEEDBACK]', { messageId, type, reason, timestamp: new Date().toISOString() });
+  };
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -613,6 +679,15 @@ export default function InteractiveSandbox() {
                           )}
                         </div>
                       )}
+
+                      {/* Feedback Buttons — SPEC-CORE-17 */}
+                      {m.sender === 'bot' && (
+                        <FeedbackButtons
+                          messageId={idx}
+                          podId={m.podId}
+                          onFeedback={handleFeedback}
+                        />
+                      )}
                     </div>
                   </div>
                 );
@@ -621,18 +696,29 @@ export default function InteractiveSandbox() {
               <div ref={chatEndRef} />
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); handleSendQuery(); }} className="chat-input-form">
-              <input
-                type="text"
-                placeholder="Escriba su consulta (ej: 'monotributo', 'julio', 'adeudado', 'ver odoo', 'rece')..."
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                disabled={loading}
+            <div className="chat-input-wrapper">
+              <SlashCommandPalette
+                podId="POD_AFIP_FISCAL"
+                filter={inputQuery}
+                activeIndex={slashActiveIndex}
+                onSelect={handleSlashSelect}
+                visible={showSlashPalette}
               />
-              <button type="submit" className="btn-primary" disabled={loading}>
-                Enviar
-              </button>
-            </form>
+              <form onSubmit={(e) => { e.preventDefault(); if (showSlashPalette) { const cmds = getFilteredCommands(); if (cmds.length > 0) handleSlashSelect(cmds[slashActiveIndex]); } else { handleSendQuery(); } }} className="chat-input-form">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Escribí / para ver comandos, o su consulta directamente..."
+                  value={inputQuery}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  disabled={loading}
+                />
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  Enviar
+                </button>
+              </form>
+            </div>
           </div>
         )}
       </div>

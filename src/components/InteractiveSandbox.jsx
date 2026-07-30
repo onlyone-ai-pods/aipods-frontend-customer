@@ -288,16 +288,32 @@ export default function InteractiveSandbox() {
 
   // Handle slash command selection
   const handleSlashSelect = (cmd) => {
+    if (cmd.suggestedValues && cmd.suggestedValues.length > 0) {
+      // Put command + space into input for parameter autocomplete mode
+      setInputQuery(`${cmd.command} `);
+      setShowSlashPalette(true);
+      setSlashActiveIndex(0);
+      if (inputRef.current) inputRef.current.focus();
+    } else {
+      setShowSlashPalette(false);
+      setInputQuery('');
+      if (cmd.query) {
+        handleSendQuery(cmd.query);
+      } else {
+        // /ayuda → show all commands as a system message
+        const allCmds = POD_COMMANDS.POD_AFIP_FISCAL || [];
+        const helpText = allCmds.map(c => `${c.icon} **${c.command}** ${c.paramHint || ''} — ${c.description}`).join('\n');
+        setMessages(prev => [...prev, { sender: 'system', text: `📋 Comandos disponibles del Pod AFIP/ARCA:\n\n${helpText}\n\nEscribí / para ver esta lista en cualquier momento.` }]);
+      }
+    }
+  };
+
+  // Handle parameter suggestion selection
+  const handleSelectParam = (cmd, paramVal) => {
     setShowSlashPalette(false);
     setInputQuery('');
-    if (cmd.query) {
-      handleSendQuery(cmd.query);
-    } else {
-      // /ayuda → show all commands as a system message
-      const allCmds = POD_COMMANDS.POD_AFIP_FISCAL || [];
-      const helpText = allCmds.map(c => `${c.icon} **${c.command}** — ${c.description}`).join('\n');
-      setMessages(prev => [...prev, { sender: 'system', text: `📋 Comandos disponibles del Pod AFIP/ARCA:\n\n${helpText}\n\nEscribí / para ver esta lista en cualquier momento.` }]);
-    }
+    const fullQuery = `${cmd.command} ${paramVal}`;
+    handleSendQuery(fullQuery);
   };
 
   // Feedback handler (SPEC-CORE-17)
@@ -702,6 +718,7 @@ export default function InteractiveSandbox() {
                 filter={inputQuery}
                 activeIndex={slashActiveIndex}
                 onSelect={handleSlashSelect}
+                onSelectParam={handleSelectParam}
                 visible={showSlashPalette}
               />
               <form onSubmit={(e) => { e.preventDefault(); if (showSlashPalette) { const cmds = getFilteredCommands(); if (cmds.length > 0) handleSlashSelect(cmds[slashActiveIndex]); } else { handleSendQuery(); } }} className="chat-input-form">

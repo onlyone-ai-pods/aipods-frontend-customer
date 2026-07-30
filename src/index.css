@@ -833,6 +833,29 @@ body {
   text-transform: uppercase;
 }
 
+.pod-context-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.slash-pod-switch-hint {
+  padding: 5px 14px;
+  font-size: 0.72rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.slash-pod-switch-hint:hover {
+  color: #00f2fe;
+}
 
 /* FEEDBACK BUTTONS (SPEC-CORE-17) */
 .feedback-container {

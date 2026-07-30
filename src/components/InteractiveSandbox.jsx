@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import SlashCommandPalette, { POD_COMMANDS } from './SlashCommandPalette';
+import SlashCommandPalette, { POD_REGISTRY, UNIVERSAL_COMMANDS } from './SlashCommandPalette';
 import FeedbackButtons from './FeedbackButtons';
 
 const datasetPV = [
@@ -242,6 +242,7 @@ export default function InteractiveSandbox() {
   const [dragActive, setDragActive] = useState(false);
   const [showSlashPalette, setShowSlashPalette] = useState(false);
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+  const [activePod, setActivePod] = useState('POD_AFIP_FISCAL');
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -257,58 +258,104 @@ export default function InteractiveSandbox() {
     }
   }, []);
 
-  // Get filtered commands count for keyboard nav
-  const getFilteredCommands = useCallback(() => {
-    const allCmds = POD_COMMANDS.POD_AFIP_FISCAL || [];
-    const filterLower = inputQuery.toLowerCase().replace(/^\//, '');
-    return filterLower
-      ? allCmds.filter(c => c.command.toLowerCase().includes(filterLower) || c.label.toLowerCase().includes(filterLower) || c.description.toLowerCase().includes(filterLower))
-      : allCmds;
-  }, [inputQuery]);
+  // Get filtered items count for keyboard nav (context-aware)
+  const getFilteredItems = useCallback(() => {
+    const rawInput = inputQuery || '';
+    const spaceIndex = rawInput.indexOf(' ');
+    const isParamMode = spaceIndex !== -1;
+
+    if (isParamMode && activePod) {
+      const cmdStr = rawInput.substring(0, spaceIndex).toLowerCase();
+      const argFilter = rawInput.substring(spaceIndex + 1).toLowerCase();
+      const podCmds = UNIVERSAL_COMMANDS[activePod] || [];
+      const cmd = podCmds.find(c => c.command.toLowerCase() === cmdStr);
+      if (!cmd || !cmd.suggestedValues) return [];
+      return argFilter ? cmd.suggestedValues.filter(sv => sv.value.toLowerCase().includes(argFilter) || sv.label.toLowerCase().includes(argFilter)) : cmd.suggestedValues;
+    }
+    if (activePod) {
+      const podCmds = UNIVERSAL_COMMANDS[activePod] || [];
+      const filterLower = rawInput.toLowerCase().replace(/^\//, '');
+      return filterLower ? podCmds.filter(c => c.command.toLowerCase().includes(filterLower) || c.label.toLowerCase().includes(filterLower)) : podCmds;
+    }
+    const filterLower = rawInput.toLowerCase().replace(/^\//, '');
+    return filterLower ? POD_REGISTRY.filter(p => p.shortcut.includes(filterLower) || p.label.toLowerCase().includes(filterLower)) : POD_REGISTRY;
+  }, [inputQuery, activePod]);
 
   // Keyboard navigation for slash palette
   const handleKeyDown = useCallback((e) => {
     if (!showSlashPalette) return;
-    const cmds = getFilteredCommands();
+    const items = getFilteredItems();
+    if (items.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSlashActiveIndex(prev => (prev + 1) % cmds.length);
+      setSlashActiveIndex(prev => (prev + 1) % items.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSlashActiveIndex(prev => (prev - 1 + cmds.length) % cmds.length);
-    } else if (e.key === 'Enter' && cmds.length > 0) {
+      setSlashActiveIndex(prev => (prev - 1 + items.length) % items.length);
+    } else if (e.key === 'Enter') {
       e.preventDefault();
-      handleSlashSelect(cmds[slashActiveIndex]);
+      const rawInput = inputQuery || '';
+      const spaceIndex = rawInput.indexOf(' ');
+      const isParamMode = spaceIndex !== -1;
+      if (isParamMode && activePod) {
+        const cmdStr = rawInput.substring(0, spaceIndex).toLowerCase();
+        const podCmds = UNIVERSAL_COMMANDS[activePod] || [];
+        const cmd = podCmds.find(c => c.command.toLowerCase() === cmdStr);
+        if (cmd && items[slashActiveIndex]) handleSelectParam(cmd, items[slashActiveIndex].value);
+      } else if (activePod) {
+        if (items[slashActiveIndex]) handleSelectCommand(items[slashActiveIndex]);
+      } else {
+        if (items[slashActiveIndex]) handleSelectPod(items[slashActiveIndex]);
+      }
     } else if (e.key === 'Escape') {
       setShowSlashPalette(false);
       setInputQuery('');
+    } else if (e.key === 'Backspace' && inputQuery === '/') {
+      // If backspace on just '/', reset pod context
+      setActivePod(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSlashPalette, slashActiveIndex, getFilteredCommands]);
+  }, [showSlashPalette, slashActiveIndex, getFilteredItems, inputQuery, activePod]);
 
-  // Handle slash command selection
-  const handleSlashSelect = (cmd) => {
-    if (cmd.suggestedValues && cmd.suggestedValues.length > 0) {
-      // Put command + space into input for parameter autocomplete mode
-      setInputQuery(`${cmd.command} `);
-      setShowSlashPalette(true);
+  // Handle Pod selection
+  const handleSelectPod = (pod) => {
+    if (pod === null) {
+      // Reset to pod selector
+      setActivePod(null);
+      setInputQuery('/');
       setSlashActiveIndex(0);
+      return;
+    }
+    setActivePod(pod.id);
+    setInputQuery('/');
+    setSlashActiveIndex(0);
+    setShowSlashPalette(true);
+    setMessages(prev => [...prev, {
+      sender: 'system',
+      text: `${pod.icon} Contexto cambiado a **${pod.label}**. Escribí / para ver los comandos disponibles.`
+    }]);
+    if (inputRef.current) inputRef.current.focus();
+  };
+
+  // Handle command selection (enter param mode or execute)
+  const handleSelectCommand = (cmd) => {
+    if (cmd.suggestedValues && cmd.suggestedValues.length > 0) {
+      setInputQuery(`${cmd.command} `);
+      setSlashActiveIndex(0);
+      setShowSlashPalette(true);
       if (inputRef.current) inputRef.current.focus();
     } else {
       setShowSlashPalette(false);
       setInputQuery('');
-      if (cmd.query) {
-        handleSendQuery(cmd.query);
-      } else {
-        // /ayuda → show all commands as a system message
-        const allCmds = POD_COMMANDS.POD_AFIP_FISCAL || [];
-        const helpText = allCmds.map(c => `${c.icon} **${c.command}** ${c.paramHint || ''} — ${c.description}`).join('\n');
-        setMessages(prev => [...prev, { sender: 'system', text: `📋 Comandos disponibles del Pod AFIP/ARCA:\n\n${helpText}\n\nEscribí / para ver esta lista en cualquier momento.` }]);
-      }
+      // /ayuda
+      const podCmds = UNIVERSAL_COMMANDS[activePod] || [];
+      const podMeta = POD_REGISTRY.find(p => p.id === activePod);
+      const helpText = podCmds.map(c => `${c.icon} **${c.command}** ${c.paramHint || ''} — ${c.description}`).join('\n');
+      setMessages(prev => [...prev, { sender: 'system', text: `📋 Comandos disponibles en ${podMeta ? podMeta.icon + ' ' + podMeta.label : 'Pod'}:\n\n${helpText}` }]);
     }
   };
 
-  // Handle parameter suggestion selection
+  // Handle parameter selection → execute query
   const handleSelectParam = (cmd, paramVal) => {
     setShowSlashPalette(false);
     setInputQuery('');
@@ -571,21 +618,29 @@ export default function InteractiveSandbox() {
             <h3>Seleccione un AI Pod para iniciar la prueba interactiva</h3>
             <p>Conexión directa con la API Engine Core Go en tiempo real</p>
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <button className="btn-primary" onClick={() => handleInitializeSession('Guia_AFIP_ARCA_2026.pdf')}>
+              <button className="btn-primary" onClick={() => { handleInitializeSession('Guia_AFIP_ARCA_2026.pdf'); setActivePod('POD_AFIP_FISCAL'); }}>
                 🇦🇷 Probar AI Pod ARCA / AFIP Fiscal
               </button>
-              <button className="btn-primary" style={{ background: '#2563eb' }} onClick={() => handleInitializeSession('GitHub_DevOps_Spec.md')}>
+              <button className="btn-primary" style={{ background: '#2563eb' }} onClick={() => { handleInitializeSession('GitHub_DevOps_Spec.md'); setActivePod('POD_GITHUB_DEVOPS'); }}>
                 🐙 Probar AI Pod GitHub / Odoo.sh DevOps
               </button>
-              <button className="btn-primary" style={{ background: '#059669' }} onClick={() => handleInitializeSession('SAP_S4HANA_Docs.rst')}>
-                📊 Probar AI Pod SAP Enterprise
+              <button className="btn-primary" style={{ background: '#714B67' }} onClick={() => { handleInitializeSession('Odoo_ERP_Enterprise.pdf'); setActivePod('POD_ODOO_ENTERPRISE'); }}>
+                🏭 Probar AI Pod Odoo Enterprise ERP
               </button>
             </div>
           </div>
         ) : (
           <div className="sandbox-chat-container">
             <div className="sandbox-status-bar">
-              <span>📄 Documento / Pod Activo: <strong>{session.file_name}</strong></span>
+              <span>📄 Pod Activo: <strong>{session.file_name}</strong></span>
+              {activePod && (() => {
+                const podMeta = POD_REGISTRY.find(p => p.id === activePod);
+                return podMeta ? (
+                  <span className="pod-context-badge" style={{ background: podMeta.color + '22', borderColor: podMeta.color, color: podMeta.color }}>
+                    {podMeta.icon} {podMeta.label}
+                  </span>
+                ) : null;
+              })()}
               <span className="query-counter">
                 Consultas: <strong>{session.query_count}</strong>
               </span>
@@ -714,14 +769,15 @@ export default function InteractiveSandbox() {
 
             <div className="chat-input-wrapper">
               <SlashCommandPalette
-                podId="POD_AFIP_FISCAL"
+                activePod={activePod}
                 filter={inputQuery}
                 activeIndex={slashActiveIndex}
-                onSelect={handleSlashSelect}
+                onSelectPod={handleSelectPod}
+                onSelectCommand={handleSelectCommand}
                 onSelectParam={handleSelectParam}
                 visible={showSlashPalette}
               />
-              <form onSubmit={(e) => { e.preventDefault(); if (showSlashPalette) { const cmds = getFilteredCommands(); if (cmds.length > 0) handleSlashSelect(cmds[slashActiveIndex]); } else { handleSendQuery(); } }} className="chat-input-form">
+              <form onSubmit={(e) => { e.preventDefault(); if (showSlashPalette) { const items = getFilteredItems(); if (items.length > 0) { /* let keyDown handle it */ } } else { handleSendQuery(); } }} className="chat-input-form">
                 <input
                   ref={inputRef}
                   type="text"

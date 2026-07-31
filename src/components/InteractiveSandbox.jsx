@@ -363,10 +363,29 @@ export default function InteractiveSandbox() {
     handleSendQuery(fullQuery);
   };
 
-  // Feedback handler (SPEC-CORE-17)
-  // TODO [POST-MVP]: POST /api/v1/feedback → Redis cache purge + audit_logs flag
-  const handleFeedback = (messageId, type, reason) => {
-    console.log('[FEEDBACK]', { messageId, type, reason, timestamp: new Date().toISOString() });
+  // Feedback handler (Issue #14 & SPEC-CORE-17: Purga Reactiva de Caché Redis)
+  const handleFeedback = async (messageId, type, reason) => {
+    const msg = messages[messageId];
+    const targetQuery = msg ? msg.text : '';
+
+    console.log('[FEEDBACK SENT]', { messageId, type, reason, podId: activePod });
+
+    try {
+      await fetch('http://localhost:8080/api/v1/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message_id: messageId,
+          type,
+          reason,
+          pod_id: activePod,
+          query: targetQuery,
+          tenant_id: 'TENANT_DEMO_001'
+        })
+      });
+    } catch (err) {
+      console.warn('[FEEDBACK FETCH WARN]', err.message);
+    }
   };
 
   // Auto-scroll to bottom on new messages

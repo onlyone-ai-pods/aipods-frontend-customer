@@ -235,14 +235,24 @@ function KPIDashboard() {
 }
 
 export default function InteractiveSandbox() {
-  const [session, setSession] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [session, setSession] = useState({
+    session_id: 'sandbox_session_demo_001',
+    file_name: 'Entorno Multi-Pod Activo',
+    query_count: 0,
+    max_queries: 100
+  });
+  const [messages, setMessages] = useState([
+    {
+      sender: 'bot',
+      text: '🤖 **Consola Multi-Pod Inicializada.**\n\nEscribí `/` en el prompt para desplegar el **Pod Selector** y elegir si querés interactuar con 🇦🇷 AFIP/ARCA, 🏭 Odoo ERP o 🐙 GitHub DevOps.'
+    }
+  ]);
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [showSlashPalette, setShowSlashPalette] = useState(false);
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
-  const [activePod, setActivePod] = useState('POD_AFIP_FISCAL');
+  const [activePod, setActivePod] = useState(null); // null = Pod Selector Mode en Capa 1
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -650,16 +660,29 @@ export default function InteractiveSandbox() {
           </div>
         ) : (
           <div className="sandbox-chat-container">
-            <div className="sandbox-status-bar">
-              <span>📄 Pod Activo: <strong>{session.file_name}</strong></span>
-              {activePod && (() => {
-                const podMeta = POD_REGISTRY.find(p => p.id === activePod);
-                return podMeta ? (
-                  <span className="pod-context-badge" style={{ background: podMeta.color + '22', borderColor: podMeta.color, color: podMeta.color }}>
-                    {podMeta.icon} {podMeta.label}
-                  </span>
-                ) : null;
-              })()}
+            <div className="sandbox-status-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>🤖 Contexto de Pod:</span>
+                <select
+                  value={activePod || ''}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    if (!selectedId) {
+                      setActivePod(null);
+                    } else {
+                      const podObj = POD_REGISTRY.find(p => p.id === selectedId);
+                      if (podObj) handleSelectPod(podObj);
+                    }
+                  }}
+                  style={{ padding: '4px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
+                >
+                  <option value="">🔄 [Seleccionar Pod / Ver Todos (/)]</option>
+                  {POD_REGISTRY.map(p => (
+                    <option key={p.id} value={p.id}>{p.icon} {p.label}</option>
+                  ))}
+                </select>
+              </div>
+
               <span className="query-counter">
                 Consultas: <strong>{session.query_count}</strong>
               </span>

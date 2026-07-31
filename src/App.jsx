@@ -6,6 +6,7 @@ import ValuePillars from './components/ValuePillars.jsx';
 import InteractiveSandbox from './components/InteractiveSandbox.jsx';
 import NativeVaultView from './components/NativeVaultView.jsx';
 import TeamPermissionsView from './components/TeamPermissionsView.jsx';
+import BillingView from './components/BillingView.jsx';
 import ConversionModal from './components/ConversionModal.jsx';
 import './index.css';
 
@@ -48,12 +49,7 @@ export default function App() {
 
           {activeModule === 'team' && <TeamPermissionsView />}
 
-          {activeModule === 'billing' && (
-            <section style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-              <h2>💳 Facturación, Suscripción & Métricas</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Plan Enterprise Multi-Pod activo · Tokens consumidos del mes.</p>
-            </section>
-          )}
+          {activeModule === 'billing' && <BillingView />}
 
           {activeModule === 'settings' && (
             <section style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>

@@ -74,6 +74,12 @@ export default function NativeVaultView() {
     }
 
     setShowSecret(prev => ({ ...prev, [fieldId]: true }));
+
+    // Auto-purga de memoria RAM a los 15 segundos (SPEC-CORE-29 Zero-Trust Standard)
+    setTimeout(() => {
+      setShowSecret(prev => ({ ...prev, [fieldId]: false }));
+      setRevealedData(prev => ({ ...prev, [fieldId]: null }));
+    }, 15000);
   };
 
   return (

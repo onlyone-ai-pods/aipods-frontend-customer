@@ -4,6 +4,8 @@ import CustomerPortalSidebar from './components/CustomerPortalSidebar.jsx';
 import Hero from './components/Hero.jsx';
 import ValuePillars from './components/ValuePillars.jsx';
 import InteractiveSandbox from './components/InteractiveSandbox.jsx';
+import NativeVaultView from './components/NativeVaultView.jsx';
+import TeamPermissionsView from './components/TeamPermissionsView.jsx';
 import ConversionModal from './components/ConversionModal.jsx';
 import './index.css';
 
@@ -42,28 +44,9 @@ export default function App() {
             </>
           )}
 
-          {activeModule === 'vault' && (
-            <section style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-              <h2>🛡️ Native Vault de Credenciales & Secretos</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Cifrado simétrico AES-256 GCM en reposo y custodia efímera BYOV Bitwarden (SPEC-CORE-29).</p>
-              <div style={{ marginTop: '24px', padding: '24px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-                <h3>🔑 Secreto Aprovisionado: AFIP / ARCA Fiscal</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>CUIT: 30-71123456-8 · Certificado Homologación `.crt` Cargado</p>
-                <button className="btn-secondary" style={{ marginTop: '12px' }}>Ver Detalle del Vault</button>
-              </div>
-            </section>
-          )}
+          {activeModule === 'vault' && <NativeVaultView />}
 
-          {activeModule === 'team' && (
-            <section style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-              <h2>👥 Equipo, Roles RBAC & IAM Audit Trail</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Matriz de permisos de Pods y registro inmutable de auditoría con firma SHA-256 (SPEC-CORE-24).</p>
-              <div style={{ marginTop: '24px', padding: '24px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-                <h3>👤 Administrador Principal: Martin Silva</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--accent-green)' }}>Rol: TENANT_OWNER · Permisos Totales en todos los AI Pods</p>
-              </div>
-            </section>
-          )}
+          {activeModule === 'team' && <TeamPermissionsView />}
 
           {activeModule === 'billing' && (
             <section style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -94,4 +77,3 @@ export default function App() {
     </div>
   );
 }
-

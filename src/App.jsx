@@ -7,6 +7,7 @@ import InteractiveSandbox from './components/InteractiveSandbox.jsx';
 import NativeVaultView from './components/NativeVaultView.jsx';
 import TeamPermissionsView from './components/TeamPermissionsView.jsx';
 import BillingView from './components/BillingView.jsx';
+import SettingsView from './components/SettingsView.jsx';
 import ConversionModal from './components/ConversionModal.jsx';
 import './index.css';
 
@@ -51,12 +52,7 @@ export default function App() {
 
           {activeModule === 'billing' && <BillingView />}
 
-          {activeModule === 'settings' && (
-            <section style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-              <h2>👤 Mi Cuenta & Preferencias</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Configuración de 2FA/MFA, datos personales y preferencia de tema.</p>
-            </section>
-          )}
+          {activeModule === 'settings' && <SettingsView />}
         </main>
       </div>
 

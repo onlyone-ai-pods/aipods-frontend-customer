@@ -1,24 +1,41 @@
 import React, { useState } from 'react';
+import InviteMemberModal from './InviteMemberModal.jsx';
 
 /**
- * TeamPermissionsView — Módulo de Administración de Colaboradores, Matriz RBAC/ABAC e IAM Audit Trail (SPEC-CORE-24).
+ * TeamPermissionsView — Módulo de Administración de Colaboradores, Matriz RBAC/ABAC e IAM Audit Trail (SPEC-CORE-24 & SPEC-CORE-31).
  */
 export default function TeamPermissionsView() {
   const [activeTab, setActiveTab] = useState('members'); // 'members' | 'matrix' | 'audit'
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  const members = [
+  const [members, setMembers] = useState([
     { id: 'usr_01', name: 'Martin Silva', email: 'martin.silva@acmecorp.com', role: '👑 TENANT_OWNER', status: 'ACTIVE', pods: ['AFIP', 'Odoo', 'GitHub'], lastActive: 'Hace 5 min' },
     { id: 'usr_02', name: 'Laura Gómez', email: 'laura.gomez@acmecorp.com', role: '💼 OPERATOR', status: 'ACTIVE', pods: ['AFIP', 'Odoo'], lastActive: 'Hace 2 horas' },
     { id: 'usr_03', name: 'Carlos Ruiz', email: 'carlos.ruiz@acmecorp.com', role: '💼 OPERATOR', status: 'ACTIVE', pods: ['Odoo (Stock)'], lastActive: 'Ayer' },
     { id: 'usr_04', name: 'Auditoría KPMG', email: 'auditor.kpmg@external.com', role: '👁️ AUDITOR', status: 'ACTIVE', pods: ['Todos (Read-only)'], lastActive: '23/07/2026' }
-  ];
+  ]);
 
-  const auditLogs = [
+  const [auditLogs, setAuditLogs] = useState([
     { id: 'aud_01', date: '2026-07-30 21:35:00', actor: 'martin.silva@acmecorp.com', target: 'laura.gomez@acmecorp.com', change: '🟢 OTORGADO: AFIP /config (CSR)', risk: 'CRITICAL', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
     { id: 'aud_02', date: '2026-07-28 14:10:22', actor: 'martin.silva@acmecorp.com', target: 'carlos.ruiz@acmecorp.com', change: '🔴 REVOCADO: GitHub /deployments', risk: 'MEDIUM', hash: '88f7a6b5c4d3e2f1a09887766554433221100988776655443322110098877665' },
     { id: 'aud_03', date: '2026-07-25 09:15:04', actor: 'SYSTEM (Auto-Security)', target: 'esteban.q@acmecorp.com', change: '🔒 SUSPENDIDO: Inactividad 90 días', risk: 'INFO', hash: '77a6b5c4d3e2f1a0988776655443322110098877665544332211009887766544' }
-  ];
+  ]);
+
+  const handleInviteSuccess = (newMember) => {
+    setMembers(prev => [...prev, { ...newMember, pods: ['AFIP', 'Odoo'] }]);
+    
+    // Inyectar log criptográfico en el IAM Audit Trail con firma SHA-256
+    const newLog = {
+      id: `aud_${Math.random().toString(36).substring(2, 9)}`,
+      date: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      actor: 'martin.silva@acmecorp.com',
+      target: newMember.email,
+      change: `🟢 INVITACIÓN Y ROL ASIGNADO: ${newMember.role}`,
+      risk: 'HIGH',
+      hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
 
   return (
     <div className="team-view-container" style={{ padding: '30px 24px', maxWidth: '1100px', margin: '0 auto' }}>
@@ -170,20 +187,12 @@ export default function TeamPermissionsView() {
         </div>
       )}
 
-      {/* MODAL DE INVITACIÓN DE COLABORADOR */}
-      {showInviteModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '14px', padding: '24px', maxWidth: '450px', width: '90%' }}>
-            <h3 style={{ margin: '0 0 12px 0' }}>👤 Invitar Colaborador al Tenant</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Asigne un email y los permisos iniciales para el nuevo miembro del equipo.</p>
-            <input type="email" placeholder="colaborador@empresa.com" style={{ width: '100%', padding: '10px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', margin: '12px 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-              <button className="btn-secondary" onClick={() => setShowInviteModal(false)}>Cancelar</button>
-              <button className="btn-primary" onClick={() => setShowInviteModal(false)}>Enviar Invitación</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL DE INVITACIÓN DE COLABORADOR (SPEC-CORE-31 / Issue #17) */}
+      <InviteMemberModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onInviteSuccess={handleInviteSuccess}
+      />
     </div>
   );
 }

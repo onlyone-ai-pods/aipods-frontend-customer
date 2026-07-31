@@ -51,8 +51,29 @@ export default function NativeVaultView() {
     }
   ];
 
-  const toggleSecret = (id) => {
-    setShowSecret(prev => ({ ...prev, [id]: !prev[id] }));
+  const [revealedData, setRevealedData] = useState({});
+
+  const toggleSecret = async (fieldId, keyName) => {
+    if (showSecret[fieldId]) {
+      setShowSecret(prev => ({ ...prev, [fieldId]: false }));
+      return;
+    }
+
+    try {
+      const res = await fetch('http://localhost:8080/api/v1/vault/reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_name: keyName || 'ODOO_ENTERPRISE_API_KEY' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRevealedData(prev => ({ ...prev, [fieldId]: data.plain_text }));
+      }
+    } catch (err) {
+      console.log('[VAULT REVEAL NOTE]', err.message);
+    }
+
+    setShowSecret(prev => ({ ...prev, [fieldId]: true }));
   };
 
   return (
@@ -138,7 +159,7 @@ export default function NativeVaultView() {
                   <div key={i} style={{ fontSize: '0.8rem' }}>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: '600' }}>{f.label}</div>
                     <div style={{ fontFamily: 'monospace', color: 'var(--text-main)', wordBreak: 'break-all', marginTop: '2px' }}>
-                      {f.secret && !showSecret[sec.id] ? '••••••••••••••••' : f.value}
+                      {f.secret && !showSecret[sec.id] ? '••••••••••••••••' : (revealedData[sec.id] || f.value)}
                     </div>
                   </div>
                 ))}

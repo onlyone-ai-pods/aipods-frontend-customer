@@ -100,12 +100,24 @@ body {
   gap: 24px;
 }
 
-.nav-links a {
+.nav-links a,
+.nav-link-btn {
   color: var(--text-muted);
   text-decoration: none;
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: color 0.2s;
+  font-weight: 600;
+  font-size: 0.92rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.nav-links a:hover,
+.nav-link-btn:hover {
+  color: var(--accent-cyan);
+  background: rgba(0, 242, 254, 0.08);
 }
 
 .nav-links a:hover {

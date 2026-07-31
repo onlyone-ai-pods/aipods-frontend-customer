@@ -398,12 +398,18 @@ export default function InteractiveSandbox() {
     }
   };
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll to bottom only when user actively sends a message
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
-  }, [messages, loading]);
+    // Solo hacer scroll si hay mensajes y la carga de respuesta terminó
+    if (chatEndRef.current && loading) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [messages.length, loading]);
 
   // Polling to sync Admin approvals live back to Customer chat screen
   useEffect(() => {

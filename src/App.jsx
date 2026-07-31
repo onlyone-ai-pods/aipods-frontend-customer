@@ -27,6 +27,7 @@ export default function App() {
         currentTheme={theme}
         onThemeChange={setTheme}
         onOpenSandbox={() => setShowConversionModal(true)}
+        onModuleChange={setActiveModule}
       />
       
       <div className="portal-layout">

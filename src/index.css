@@ -1204,3 +1204,139 @@ body {
   overflow-y: auto;
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   RESPONSIVE DESIGN BREAKPOINTS (PC, TABLET, SMARTPHONE)
+   ───────────────────────────────────────────────────────────────────── */
+
+/* TABLET LAYOUT (≤ 992px) */
+@media (max-width: 992px) {
+  .portal-sidebar {
+    width: 72px;
+    padding: 0;
+  }
+
+  .sidebar-brand .brand-text-wrap,
+  .sidebar-group-title,
+  .nav-label,
+  .nav-badge,
+  .tenant-details {
+    display: none;
+  }
+
+  .sidebar-header {
+    padding: 16px 10px;
+    text-align: center;
+  }
+
+  .sidebar-brand {
+    justify-content: center;
+  }
+
+  .sidebar-nav-item {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .tenant-info-card {
+    justify-content: center;
+    padding: 10px 6px;
+  }
+}
+
+/* MOBILE & SMARTPHONE LAYOUT (≤ 768px) */
+@media (max-width: 768px) {
+  .portal-layout {
+    flex-direction: column;
+  }
+
+  .portal-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .sidebar-header {
+    border-bottom: none;
+    padding: 10px 14px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .sidebar-nav-item {
+    padding: 8px 12px;
+    white-space: nowrap;
+    width: auto;
+  }
+
+  .nav-label {
+    display: inline;
+    font-size: 0.8rem;
+  }
+
+  .sidebar-footer {
+    display: none;
+  }
+
+  .nav-container {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .nav-links {
+    display: none; /* Se navega via sidebar en mobile */
+  }
+
+  .nav-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .sandbox-chat-container {
+    max-height: 550px;
+  }
+
+  .chat-input-form {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chat-input-form button {
+    width: 100%;
+  }
+
+  /* Tablas adaptables con scroll horizontal táctil */
+  .result-table, 
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* SMALL SMARTPHONES (≤ 480px) */
+@media (max-width: 480px) {
+  .theme-btn {
+    padding: 4px 6px;
+    font-size: 0.65rem;
+  }
+
+  .slash-palette {
+    max-height: 220px;
+  }
+
+  .prompt-pill {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+  }
+}
+
+

@@ -87,12 +87,15 @@ body {
 
 .logo-text .badge {
   font-size: 0.7rem;
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-  color: #000;
-  padding: 2px 6px;
-  border-radius: 6px;
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  color: var(--accent-cyan);
+  padding: 3px 8px;
+  border-radius: 12px;
   margin-left: 6px;
   vertical-align: middle;
+  display: inline-block;
+  font-weight: 700;
 }
 
 .nav-links {

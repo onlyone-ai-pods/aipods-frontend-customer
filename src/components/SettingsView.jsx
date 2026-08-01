@@ -162,7 +162,7 @@ export default function SettingsView() {
                 onChange={(e) => setProfile({ ...profile, language: e.target.value })}
                 style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
               >
-                <option value="es">🇦🇷 / 🇲🇽 / 🇨🇱 / 🇵🇪 / 🇺Y — Español Neutro (Latam)</option>
+                <option value="es">🇦🇷 / 🇲🇽 / 🇨🇱 / 🇵🇪 / 🇺🇾 — Español Neutro (Latam)</option>
                 <option value="pt">🇧🇷 — Português (Brasil)</option>
                 <option value="en">🇺🇸 — English (United States)</option>
               </select>

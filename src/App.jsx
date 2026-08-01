@@ -86,14 +86,14 @@ export default function App() {
           {activeModule === 'billing' && <BillingView />}
 
           {activeModule === 'settings' && <SettingsView currentTheme={theme} onThemeChange={setTheme} />}
+
+          <footer className="footer">
+            <div className="footer-content">
+              <p>© 2026 Martin Llanos. Todos los derechos reservados. AI Pods Enterprise SaaS Platform.</p>
+            </div>
+          </footer>
         </main>
       </div>
-
-      <footer className="footer">
-        <div className="footer-content">
-          <p>© 2026 Martin Llanos. Todos los derechos reservados. AI Pods Enterprise SaaS Platform.</p>
-        </div>
-      </footer>
 
       <ConversionModal
         isOpen={showConversionModal}

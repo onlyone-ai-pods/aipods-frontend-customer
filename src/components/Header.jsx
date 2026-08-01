@@ -1,7 +1,6 @@
 import React from 'react';
-import ThemeSwitcher from './ThemeSwitcher';
 
-export default function Header({ currentTheme, onThemeChange, onOpenSandbox, onModuleChange, activeModule = 'console' }) {
+export default function Header({ onOpenSandbox, onModuleChange, activeModule = 'console' }) {
   return (
     <header className="navbar">
       <div className="nav-container">
@@ -19,9 +18,8 @@ export default function Header({ currentTheme, onThemeChange, onOpenSandbox, onM
         </nav>
 
         <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ThemeSwitcher currentTheme={currentTheme} onThemeChange={onThemeChange} />
-          <button className="btn-primary" onClick={onOpenSandbox}>
-            Iniciar Portal
+          <button className="btn-primary" onClick={onOpenSandbox} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            🚀 Iniciar Portal
           </button>
         </div>
       </div>

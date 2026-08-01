@@ -1173,6 +1173,12 @@ body {
   font-weight: 700;
 }
 
+[data-theme="light"] .sidebar-nav-item.active {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
 .nav-icon {
   font-size: 1.1rem;
 }

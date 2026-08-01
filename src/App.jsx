@@ -13,8 +13,38 @@ import './index.css';
 
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('aipods_theme') || 'dark');
-  const [activeModule, setActiveModule] = useState('console');
+  
+  // Obtener módulo inicial desde Hash de URL (ej. #settings) o LocalStorage (SPEC-CORE-31)
+  const getInitialModule = () => {
+    const hash = window.location.hash.replace('#', '');
+    const validModules = ['console', 'vault', 'team', 'billing', 'settings', 'sandbox'];
+    if (validModules.includes(hash)) return hash;
+    return localStorage.getItem('aipods_active_module') || 'console';
+  };
+
+  const [activeModule, setActiveModuleState] = useState(getInitialModule);
   const [showConversionModal, setShowConversionModal] = useState(false);
+
+  // Función envolvente para cambiar de módulo y perservar en Hash + LocalStorage
+  const handleModuleChange = (moduleKey) => {
+    setActiveModuleState(moduleKey);
+    window.location.hash = moduleKey;
+    localStorage.setItem('aipods_active_module', moduleKey);
+  };
+
+  // Escuchar cambios de hash en la ventana (botón Atrás/Adelante del navegador)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      const validModules = ['console', 'vault', 'team', 'billing', 'settings', 'sandbox'];
+      if (validModules.includes(hash)) {
+        setActiveModuleState(hash);
+        localStorage.setItem('aipods_active_module', hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Aplicar atributo data-theme al root HTML y guardar en localStorage (SPEC-CORE-22)
   useEffect(() => {
@@ -29,14 +59,14 @@ export default function App() {
         activeModule={activeModule}
         onThemeChange={setTheme}
         onOpenSandbox={() => setShowConversionModal(true)}
-        onModuleChange={setActiveModule}
+        onModuleChange={handleModuleChange}
       />
       
       <div className="portal-layout">
         {/* Sidebar Fija Navegación SaaS (SPEC-CORE-24) */}
         <CustomerPortalSidebar
           activeModule={activeModule}
-          onModuleChange={setActiveModule}
+          onModuleChange={handleModuleChange}
         />
 
         {/* Ámbito de Contenido del Módulo Seleccionado */}

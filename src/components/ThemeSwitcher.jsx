@@ -1,37 +1,32 @@
 import React from 'react';
 
 /**
- * ThemeSwitcher — Componente para conmutación de los 3 Temas Visuales (SPEC-CORE-22).
- *
- * Temas:
- *  - 'dark': Dark Neon / Cyber Glassmorphism (Default)
- *  - 'light': Light Clean Enterprise
- *  - 'accessible': High Contrast WCAG 2.1 AAA
+ * ThemeSwitcher — Switcher Discreto de Temas Visuales (SPEC-CORE-22 / SPEC-CORE-45).
  */
 export default function ThemeSwitcher({ currentTheme, onThemeChange }) {
   return (
-    <div className="theme-switcher-container" title="Seleccionar Tema Visual (SPEC-CORE-22)">
-      <button
-        className={`theme-btn ${currentTheme === 'dark' ? 'active' : ''}`}
-        onClick={() => onThemeChange('dark')}
-        aria-label="Modo Dark Neon"
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <select
+        value={currentTheme}
+        onChange={(e) => onThemeChange(e.target.value)}
+        aria-label="Seleccionar Tema Visual"
+        style={{
+          background: 'var(--bg-input)',
+          color: 'var(--text-main)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '20px',
+          padding: '6px 12px',
+          fontSize: '0.82rem',
+          fontWeight: '700',
+          cursor: 'pointer',
+          outline: 'none',
+          transition: 'all 0.2s ease'
+        }}
       >
-        🌙 Dark
-      </button>
-      <button
-        className={`theme-btn ${currentTheme === 'light' ? 'active' : ''}`}
-        onClick={() => onThemeChange('light')}
-        aria-label="Modo Light Clean"
-      >
-        ☀️ Light
-      </button>
-      <button
-        className={`theme-btn ${currentTheme === 'accessible' ? 'active' : ''}`}
-        onClick={() => onThemeChange('accessible')}
-        aria-label="Modo Alta Accesibilidad WCAG AAA"
-      >
-        ♿ Accesible
-      </button>
+        <option value="dark">🌙 Oscuro</option>
+        <option value="light">☀️ Claro</option>
+        <option value="accessible">👁️ Accesible</option>
+      </select>
     </div>
   );
 }

@@ -65,7 +65,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  background-color: rgba(11, 15, 25, 0.9);
+  background-color: var(--bg-card);
 }
 
 .nav-container {
@@ -397,7 +397,8 @@ body {
 
 .message-bubble.bot {
   align-self: flex-start;
-  background-color: #1e293b;
+  background-color: var(--bg-input);
+  color: var(--text-main);
   border: 1px solid var(--border-color);
 }
 

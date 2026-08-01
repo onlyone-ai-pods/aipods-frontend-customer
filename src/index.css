@@ -151,18 +151,21 @@ body {
 
 /* BUTTONS */
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-  color: #000;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff !important;
   font-weight: 700;
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: 20px;
   border: none;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+}
   box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
 }
 
@@ -1198,8 +1201,8 @@ body {
 }
 
 .sidebar-nav-item.active .nav-badge {
-  background: var(--accent-cyan);
-  color: #000000;
+  background: #0284c7;
+  color: #ffffff;
   border-color: transparent;
 }
 

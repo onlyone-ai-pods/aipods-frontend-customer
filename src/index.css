@@ -1096,6 +1096,10 @@ body {
   flex-direction: column;
   justify-content: space-between;
   flex-shrink: 0;
+  position: sticky;
+  top: 70px;
+  height: calc(100vh - 70px);
+  overflow-y: auto;
 }
 
 .sidebar-header {

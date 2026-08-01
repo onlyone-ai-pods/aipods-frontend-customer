@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 /**
  * SettingsView — Panel de Usabilidad: Edición Completa de Perfil, Cambio de Contraseña, 2FA e i18n/l10n (SPEC-CORE-31 / SPEC-CORE-45).
  */
-export default function SettingsView() {
+export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
   const { i18n } = useTranslation();
   const [profile, setProfile] = useState({
     fullName: 'Martin Llanos',
@@ -12,7 +12,7 @@ export default function SettingsView() {
     tenantName: 'Acme Corporation S.A.',
     cuit: '30-71123456-8',
     role: 'Administrator',
-    theme: 'Dark Neon (Recomendado)',
+    theme: currentTheme,
     language: i18n.language || 'es',
     region: 'es_AR',
     currency: 'ARS'
@@ -34,6 +34,9 @@ export default function SettingsView() {
     e.preventDefault();
     i18n.changeLanguage(profile.language);
     localStorage.setItem('i18nextLng', profile.language);
+    if (onThemeChange) {
+      onThemeChange(profile.theme);
+    }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3500);
   };
@@ -192,9 +195,9 @@ export default function SettingsView() {
                 onChange={(e) => setProfile({ ...profile, theme: e.target.value })}
                 style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: '700', fontSize: '0.85rem' }}
               >
-                <option value="Dark Neon (Recomendado)">🌙 Dark Neon (Enterprise Default)</option>
-                <option value="Light Clean">☀️ Light Clean (Modo Claro)</option>
-                <option value="High Contrast Accessibility">👁️ Alto Contraste (Accesibilidad ISO)</option>
+                <option value="dark">🌙 Dark Neon (Enterprise Default)</option>
+                <option value="light">☀️ Light Clean (Modo Claro)</option>
+                <option value="accessible">👁️ Alto Contraste (Accesibilidad ISO)</option>
               </select>
             </div>
 

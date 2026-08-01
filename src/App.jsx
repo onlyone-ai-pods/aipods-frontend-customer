@@ -12,13 +12,14 @@ import ConversionModal from './components/ConversionModal.jsx';
 import './index.css';
 
 export default function App() {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('aipods_theme') || 'dark');
   const [activeModule, setActiveModule] = useState('console');
   const [showConversionModal, setShowConversionModal] = useState(false);
 
-  // Aplicar atributo data-theme al root HTML (SPEC-CORE-22)
+  // Aplicar atributo data-theme al root HTML y guardar en localStorage (SPEC-CORE-22)
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('aipods_theme', theme);
   }, [theme]);
 
   return (
@@ -54,7 +55,7 @@ export default function App() {
 
           {activeModule === 'billing' && <BillingView />}
 
-          {activeModule === 'settings' && <SettingsView />}
+          {activeModule === 'settings' && <SettingsView currentTheme={theme} onThemeChange={setTheme} />}
         </main>
       </div>
 

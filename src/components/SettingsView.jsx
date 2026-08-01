@@ -120,24 +120,30 @@ export default function SettingsView() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>🌐 Idioma Preferido (`i18n` SPEC-CORE-45)</label>
-              <select
-                value={profile.language}
-                onChange={(e) => setProfile({ ...profile, language: e.target.value })}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: '700', fontSize: '0.85rem' }}
-              >
-                <option value="es">🇦🇷 / 🇲🇽 / 🇨🇱 / 🇵🇪 / 🇺Y — Español Neutro (Latam)</option>
-                <option value="pt">🇧🇷 — Português (Brasil)</option>
-                <option value="en">🇺🇸 — English (United States / Default)</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>🗺️ País / Región de Operación (`l10n` SPEC-CORE-45)</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>🗺️ País / Región de Operación Principal</label>
               <select
                 value={profile.region}
-                onChange={(e) => setProfile({ ...profile, region: e.target.value })}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                onChange={(e) => {
+                  const selectedRegion = e.target.value;
+                  // Map Presets por País (SPEC-CORE-45)
+                  const presets = {
+                    es_AR: { language: 'es', currency: 'ARS' },
+                    es_CL: { language: 'es', currency: 'CLP' },
+                    es_PE: { language: 'es', currency: 'PEN' },
+                    es_UY: { language: 'es', currency: 'UYU' },
+                    es_MX: { language: 'es', currency: 'MXN' },
+                    pt_BR: { language: 'pt', currency: 'BRL' },
+                    en_US: { language: 'en', currency: 'USD' }
+                  };
+                  const preset = presets[selectedRegion] || { language: 'es', currency: 'ARS' };
+                  setProfile({
+                    ...profile,
+                    region: selectedRegion,
+                    language: preset.language,
+                    currency: preset.currency
+                  });
+                }}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: '700', fontSize: '0.85rem' }}
               >
                 <option value="es_AR">🇦🇷 Argentina (es_AR)</option>
                 <option value="es_CL">🇨🇱 Chile (es_CL)</option>
@@ -149,8 +155,21 @@ export default function SettingsView() {
               </select>
             </div>
 
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>🌐 Idioma Preferido de la Interfaz</label>
+              <select
+                value={profile.language}
+                onChange={(e) => setProfile({ ...profile, language: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+              >
+                <option value="es">🇦🇷 / 🇲🇽 / 🇨🇱 / 🇵🇪 / 🇺Y — Español Neutro (Latam)</option>
+                <option value="pt">🇧🇷 — Português (Brasil)</option>
+                <option value="en">🇺🇸 — English (United States)</option>
+              </select>
+            </div>
+
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>💰 Moneda Principal para Comprobantes Odoo</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>💰 Moneda Principal para Comprobantes y Facturación</label>
               <select
                 value={profile.currency}
                 onChange={(e) => setProfile({ ...profile, currency: e.target.value })}

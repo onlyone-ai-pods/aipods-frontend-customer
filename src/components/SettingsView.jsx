@@ -146,7 +146,7 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
                     currency: preset.currency
                   });
                 }}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: '700', fontSize: '0.85rem' }}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontWeight: '700', fontSize: '0.85rem' }}
               >
                 <option value="es_AR">🇦🇷 Argentina (es_AR)</option>
                 <option value="es_CL">🇨🇱 Chile (es_CL)</option>

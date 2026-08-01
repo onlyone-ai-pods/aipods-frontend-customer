@@ -1,7 +1,7 @@
 import React from 'react';
 import ThemeSwitcher from './ThemeSwitcher';
 
-export default function Header({ currentTheme, onThemeChange, onOpenSandbox, onModuleChange }) {
+export default function Header({ currentTheme, onThemeChange, onOpenSandbox, onModuleChange, activeModule = 'console' }) {
   return (
     <header className="navbar">
       <div className="nav-container">
@@ -11,11 +11,11 @@ export default function Header({ currentTheme, onThemeChange, onOpenSandbox, onM
         </div>
 
         <nav className="nav-links">
-          <button className="nav-link-btn" onClick={() => onModuleChange && onModuleChange('console')}>🤖 AI Console</button>
-          <button className="nav-link-btn" onClick={() => onModuleChange && onModuleChange('vault')}>🛡️ Native Vault</button>
-          <button className="nav-link-btn" onClick={() => onModuleChange && onModuleChange('team')}>👥 Equipo & Roles</button>
-          <button className="nav-link-btn" onClick={() => onModuleChange && onModuleChange('billing')}>💳 Facturación</button>
-          <button className="nav-link-btn" onClick={() => onModuleChange && onModuleChange('settings')}>👤 Mi Cuenta</button>
+          <button className={`nav-link-btn ${activeModule === 'console' ? 'active' : ''}`} onClick={() => onModuleChange && onModuleChange('console')}>🤖 AI Console</button>
+          <button className={`nav-link-btn ${activeModule === 'vault' ? 'active' : ''}`} onClick={() => onModuleChange && onModuleChange('vault')}>🛡️ Native Vault</button>
+          <button className={`nav-link-btn ${activeModule === 'team' ? 'active' : ''}`} onClick={() => onModuleChange && onModuleChange('team')}>👥 Equipo & Roles</button>
+          <button className={`nav-link-btn ${activeModule === 'billing' ? 'active' : ''}`} onClick={() => onModuleChange && onModuleChange('billing')}>💳 Facturación</button>
+          <button className={`nav-link-btn ${activeModule === 'settings' ? 'active' : ''}`} onClick={() => onModuleChange && onModuleChange('settings')}>👤 Mi Cuenta</button>
         </nav>
 
         <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

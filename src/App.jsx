@@ -25,6 +25,7 @@ export default function App() {
     <div className="app-container" data-theme={theme}>
       <Header
         currentTheme={theme}
+        activeModule={activeModule}
         onThemeChange={setTheme}
         onOpenSandbox={() => setShowConversionModal(true)}
         onModuleChange={setActiveModule}

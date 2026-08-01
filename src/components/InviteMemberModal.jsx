@@ -84,6 +84,18 @@ export default function InviteMemberModal({ isOpen, onClose, onInviteSuccess }) 
             </select>
           </div>
 
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px' }}>🌐 Idioma Inicial de la Invitación (`i18n` SPEC-CORE-45)</label>
+            <select
+              defaultValue="es"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+            >
+              <option value="es">🇦🇷 / 🇲🇽 / 🇨🇱 / 🇵🇪 / 🇺Y — Español (Latam)</option>
+              <option value="pt">🇧🇷 — Português (Brasil)</option>
+              <option value="en">🇺🇸 — English (United States)</option>
+            </select>
+          </div>
+
           <div style={{ marginBottom: '20px', background: 'var(--bg-input)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>Permisos de Acceso a AI Pods:</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem' }}>

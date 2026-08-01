@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
- * SettingsView — Panel de Usabilidad: Edición Completa de Perfil, Cambio de Contraseña, 2FA y Preferencias (SPEC-CORE-31).
+ * SettingsView — Panel de Usabilidad: Edición Completa de Perfil, Cambio de Contraseña, 2FA e i18n/l10n (SPEC-CORE-31 / SPEC-CORE-45).
  */
 export default function SettingsView() {
+  const { i18n } = useTranslation();
   const [profile, setProfile] = useState({
     fullName: 'Martin Llanos',
     email: 'martin.llanos@acmecorp.com',
     tenantName: 'Acme Corporation S.A.',
     cuit: '30-71123456-8',
     role: 'Administrator',
-    theme: 'Dark Neon (Recomendado)'
+    theme: 'Dark Neon (Recomendado)',
+    language: i18n.language || 'es',
+    region: 'es_AR',
+    currency: 'ARS'
   });
 
   const [passwordState, setPasswordState] = useState({
@@ -27,6 +32,8 @@ export default function SettingsView() {
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
+    i18n.changeLanguage(profile.language);
+    localStorage.setItem('i18nextLng', profile.language);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3500);
   };
@@ -110,6 +117,53 @@ export default function SettingsView() {
                 onChange={(e) => setProfile({ ...profile, cuit: e.target.value })}
                 style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
               />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>🌐 Idioma Preferido (`i18n` SPEC-CORE-45)</label>
+              <select
+                value={profile.language}
+                onChange={(e) => setProfile({ ...profile, language: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: '700', fontSize: '0.85rem' }}
+              >
+                <option value="es">🇦🇷 / 🇲🇽 / 🇨🇱 / 🇵🇪 / 🇺Y — Español Neutro (Latam)</option>
+                <option value="pt">🇧🇷 — Português (Brasil)</option>
+                <option value="en">🇺🇸 — English (United States / Default)</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>🗺️ País / Región de Operación (`l10n` SPEC-CORE-45)</label>
+              <select
+                value={profile.region}
+                onChange={(e) => setProfile({ ...profile, region: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+              >
+                <option value="es_AR">🇦🇷 Argentina (es_AR)</option>
+                <option value="es_CL">🇨🇱 Chile (es_CL)</option>
+                <option value="es_PE">🇵🇪 Perú (es_PE)</option>
+                <option value="es_UY">🇺🇾 Uruguay (es_UY)</option>
+                <option value="es_MX">🇲🇽 México (es_MX)</option>
+                <option value="pt_BR">🇧🇷 Brasil (pt_BR)</option>
+                <option value="en_US">🇺🇸 Estados Unidos (en_US)</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>💰 Moneda Principal para Comprobantes Odoo</label>
+              <select
+                value={profile.currency}
+                onChange={(e) => setProfile({ ...profile, currency: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+              >
+                <option value="ARS">ARS ($) — Peso Argentino</option>
+                <option value="CLP">CLP ($) — Peso Chileno</option>
+                <option value="PEN">PEN (S/) — Sol Peruano</option>
+                <option value="UYU">UYU ($) — Peso Uruguayo</option>
+                <option value="MXN">MXN ($) — Peso Mexicano</option>
+                <option value="BRL">BRL (R$) — Real Brasileño</option>
+                <option value="USD">USD ($) — US Dollar</option>
+              </select>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

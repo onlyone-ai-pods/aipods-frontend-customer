@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch, currentTenant } from '../services/session.js';
 
 /**
  * BillingView — Módulo de Facturación, Suscripción & Integración Odoo Billing (SPEC-CORE-26 / Issue #8).
@@ -24,7 +25,8 @@ export default function BillingView() {
   useEffect(() => {
     const fetchSubscription = async () => {
       try {
-        const res = await fetch('/api/v1/billing/subscription?tenant_id=TENANT_DEMO_001');
+        const tenant = encodeURIComponent(currentTenant('TENANT_DEMO_001'));
+        const res = await apiFetch(`/api/v1/billing/subscription?tenant_id=${tenant}`);
         if (res.ok) {
           const data = await res.json();
           setSub(data);

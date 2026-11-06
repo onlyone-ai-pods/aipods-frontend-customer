@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Header({ onOpenSandbox, onModuleChange, activeModule = 'console' }) {
+export default function Header({ onOpenSandbox, onModuleChange, activeModule = 'console', session, onLogout }) {
   return (
     <header className="navbar">
       <div className="nav-container">
@@ -21,6 +21,16 @@ export default function Header({ onOpenSandbox, onModuleChange, activeModule = '
           <button className="btn-primary" onClick={onOpenSandbox} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             🚀 Iniciar Portal
           </button>
+          {session && (
+            <>
+              <span title={session.user.tenant_id} style={{ fontSize: '0.82rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {session.user.email}
+              </span>
+              <button className="nav-link-btn" onClick={onLogout} style={{ whiteSpace: 'nowrap' }}>
+                Salir
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { apiFetch, currentTenant } from '../services/session.js';
 import SlashCommandPalette, { POD_REGISTRY, UNIVERSAL_COMMANDS } from './SlashCommandPalette';
 import FeedbackButtons from './FeedbackButtons';
 
@@ -381,7 +382,7 @@ export default function InteractiveSandbox() {
     console.log('[FEEDBACK SENT]', { messageId, type, reason, podId: activePod });
 
     try {
-      await fetch('/api/v1/feedback', {
+      await apiFetch('/api/v1/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -390,7 +391,7 @@ export default function InteractiveSandbox() {
           reason,
           pod_id: activePod,
           query: targetQuery,
-          tenant_id: 'TENANT_DEMO_001'
+          tenant_id: currentTenant('TENANT_DEMO_001')
         })
       });
     } catch (err) {
@@ -417,7 +418,12 @@ export default function InteractiveSandbox() {
 
     const checkApprovalsSync = async () => {
       try {
-        const res = await fetch('/api/v1/admin/approvals');
+        const res = await apiFetch('/api/v1/admin/approvals');
+        if (res.status === 403) {
+          // Con login, solo un administrador lee la cola de aprobaciones (SPEC-CORE-67).
+          clearInterval(interval);
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           const approvalsMap = {};
@@ -459,7 +465,7 @@ export default function InteractiveSandbox() {
   const handleInitializeSession = async (fileName) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/sandbox/sessions', {
+      const res = await apiFetch('/api/v1/sandbox/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_name: fileName || 'Guia_AFIP_ARCA_2026.pdf' })
@@ -501,7 +507,7 @@ export default function InteractiveSandbox() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/v1/sandbox/query', {
+      const res = await apiFetch('/api/v1/sandbox/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: session.session_id, message: textToSend })
@@ -581,11 +587,16 @@ export default function InteractiveSandbox() {
 
   const handleSendToAdmin = async (token) => {
     try {
-      const res = await fetch('/api/v1/admin/approvals/action', {
+      const res = await apiFetch('/api/v1/admin/approvals/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token, action: 'approve' })
       });
+      if (res.status === 403) {
+        // El cliente no se aprueba a sí mismo: la acción queda pendiente en el portal admin.
+        setMessages(prev => [...prev, { sender: 'system', text: '📨 La acción quedó pendiente: un administrador la tiene que aprobar en el portal admin.' }]);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setMessages(prevMsgs =>

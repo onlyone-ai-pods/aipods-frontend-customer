@@ -9,6 +9,8 @@ import TeamPermissionsView from './components/TeamPermissionsView.jsx';
 import BillingView from './components/BillingView.jsx';
 import SettingsView from './components/SettingsView.jsx';
 import ConversionModal from './components/ConversionModal.jsx';
+import LoginView from './components/LoginView.jsx';
+import { fetchAuthMode, getSession, onSessionChange, logout } from './services/session.js';
 import './index.css';
 
 export default function App() {
@@ -24,6 +26,14 @@ export default function App() {
 
   const [activeModule, setActiveModuleState] = useState(getInitialModule);
   const [showConversionModal, setShowConversionModal] = useState(false);
+
+  // Login (SPEC-CORE-67.R10): solo se pide cuando el core corre con AUTH_MODE=enforce.
+  const [authMode, setAuthMode] = useState('loading');
+  const [session, setSession] = useState(getSession);
+  useEffect(() => {
+    fetchAuthMode().then(setAuthMode);
+    return onSessionChange(setSession);
+  }, []);
 
   // Función envolvente para cambiar de módulo y perservar en Hash + LocalStorage
   const handleModuleChange = (moduleKey) => {
@@ -52,9 +62,18 @@ export default function App() {
     localStorage.setItem('aipods_theme', theme);
   }, [theme]);
 
+  if (authMode === 'loading') {
+    return <div className="app-container" data-theme={theme} />;
+  }
+  if (authMode === 'enforce' && !session) {
+    return <LoginView />;
+  }
+
   return (
     <div className="app-container" data-theme={theme}>
       <Header
+        session={session}
+        onLogout={logout}
         currentTheme={theme}
         activeModule={activeModule}
         onThemeChange={setTheme}
@@ -65,6 +84,7 @@ export default function App() {
       <div className="portal-layout">
         {/* Sidebar Fija Navegación SaaS (SPEC-CORE-24) */}
         <CustomerPortalSidebar
+          tenantId={session ? session.user.tenant_id : null}
           activeModule={activeModule}
           onModuleChange={handleModuleChange}
         />

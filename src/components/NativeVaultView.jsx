@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../services/session.js';
 
 /**
  * NativeVaultView — Módulo completo del Vault de Credenciales & Secretos (SPEC-CORE-24 & SPEC-CORE-29).
@@ -60,7 +61,7 @@ export default function NativeVaultView() {
     }
 
     try {
-      const res = await fetch('/api/v1/vault/reveal', {
+      const res = await apiFetch('/api/v1/vault/reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key_name: keyName || 'ODOO_ENTERPRISE_API_KEY' })

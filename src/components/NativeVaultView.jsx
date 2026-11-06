@@ -60,7 +60,7 @@ export default function NativeVaultView() {
     }
 
     try {
-      const res = await fetch('http://localhost:8080/api/v1/vault/reveal', {
+      const res = await fetch('/api/v1/vault/reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key_name: keyName || 'ODOO_ENTERPRISE_API_KEY' })

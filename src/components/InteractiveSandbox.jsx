@@ -381,7 +381,7 @@ export default function InteractiveSandbox() {
     console.log('[FEEDBACK SENT]', { messageId, type, reason, podId: activePod });
 
     try {
-      await fetch('http://localhost:8080/api/v1/feedback', {
+      await fetch('/api/v1/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -417,7 +417,7 @@ export default function InteractiveSandbox() {
 
     const checkApprovalsSync = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/v1/admin/approvals');
+        const res = await fetch('/api/v1/admin/approvals');
         if (res.ok) {
           const data = await res.json();
           const approvalsMap = {};
@@ -459,7 +459,7 @@ export default function InteractiveSandbox() {
   const handleInitializeSession = async (fileName) => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/v1/sandbox/sessions', {
+      const res = await fetch('/api/v1/sandbox/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_name: fileName || 'Guia_AFIP_ARCA_2026.pdf' })
@@ -501,7 +501,7 @@ export default function InteractiveSandbox() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:8080/api/v1/sandbox/query', {
+      const res = await fetch('/api/v1/sandbox/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: session.session_id, message: textToSend })
@@ -581,7 +581,7 @@ export default function InteractiveSandbox() {
 
   const handleSendToAdmin = async (token) => {
     try {
-      const res = await fetch('http://localhost:8080/api/v1/admin/approvals/action', {
+      const res = await fetch('/api/v1/admin/approvals/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token, action: 'approve' })

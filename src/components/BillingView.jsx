@@ -24,7 +24,7 @@ export default function BillingView() {
   useEffect(() => {
     const fetchSubscription = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/v1/billing/subscription?tenant_id=TENANT_DEMO_001');
+        const res = await fetch('/api/v1/billing/subscription?tenant_id=TENANT_DEMO_001');
         if (res.ok) {
           const data = await res.json();
           setSub(data);

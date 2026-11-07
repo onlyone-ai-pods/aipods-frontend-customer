@@ -1,199 +1,264 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import InviteMemberModal from './InviteMemberModal.jsx';
+import { apiFetch, getSession, hasRole } from '../services/session.js';
 
 /**
- * TeamPermissionsView — Módulo de Administración de Colaboradores, Matriz RBAC/ABAC e IAM Audit Trail (SPEC-CORE-24 & SPEC-CORE-31).
+ * TeamPermissionsView: equipo del tenant y su auditoría, leídos del core
+ * (SPEC-CORE-67.R12, R13, R16, R17). Solo un tenant_admin gestiona el equipo.
  */
+const ROLE_LABELS = {
+  customer: 'Usuario',
+  tenant_admin: 'Administrador',
+  auditor: 'Auditor (staff)',
+  platform_admin: 'Admin de plataforma (staff)',
+};
+const STAFF = ['auditor', 'platform_admin'];
+const ACTION_LABELS = {
+  'user.create': 'Alta de usuario',
+  'user.roles': 'Cambio de rol',
+  'user.activate': 'Usuario activado',
+  'user.deactivate': 'Usuario desactivado',
+  'user.password_reset': 'Contraseña reseteada por un admin',
+  'auth.password_change': 'Cambio de contraseña propia',
+  'auth.login': 'Inicio de sesión',
+  'vault.store': 'Secreto guardado en el vault',
+  'vault.reveal': 'Secreto revelado del vault',
+  'approval.approve': 'Aprobación concedida',
+  'approval.reject': 'Aprobación rechazada',
+};
+
+const th = { padding: '12px 16px', textAlign: 'left' };
+const td = { padding: '12px 16px' };
+const small = { padding: '4px 10px', fontSize: '0.75rem' };
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+async function readJSON(res, fallback) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || fallback);
+  return data;
+}
+
 export default function TeamPermissionsView() {
-  const [activeTab, setActiveTab] = useState('members'); // 'members' | 'matrix' | 'audit'
+  const [activeTab, setActiveTab] = useState('members');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [resetFor, setResetFor] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
 
-  const [members, setMembers] = useState([
-    { id: 'usr_01', name: 'Martin Silva', email: 'martin.silva@acmecorp.com', role: '👑 TENANT_OWNER', status: 'ACTIVE', pods: ['AFIP', 'Odoo', 'GitHub'], lastActive: 'Hace 5 min' },
-    { id: 'usr_02', name: 'Laura Gómez', email: 'laura.gomez@acmecorp.com', role: '💼 OPERATOR', status: 'ACTIVE', pods: ['AFIP', 'Odoo'], lastActive: 'Hace 2 horas' },
-    { id: 'usr_03', name: 'Carlos Ruiz', email: 'carlos.ruiz@acmecorp.com', role: '💼 OPERATOR', status: 'ACTIVE', pods: ['Odoo (Stock)'], lastActive: 'Ayer' },
-    { id: 'usr_04', name: 'Auditoría KPMG', email: 'auditor.kpmg@external.com', role: '👁️ AUDITOR', status: 'ACTIVE', pods: ['Todos (Read-only)'], lastActive: '23/07/2026' }
-  ]);
+  const session = getSession();
+  const isAdmin = hasRole('tenant_admin', 'platform_admin');
 
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 'aud_01', date: '2026-07-30 21:35:00', actor: 'martin.silva@acmecorp.com', target: 'laura.gomez@acmecorp.com', change: '🟢 OTORGADO: AFIP /config (CSR)', risk: 'CRITICAL', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
-    { id: 'aud_02', date: '2026-07-28 14:10:22', actor: 'martin.silva@acmecorp.com', target: 'carlos.ruiz@acmecorp.com', change: '🔴 REVOCADO: GitHub /deployments', risk: 'MEDIUM', hash: '88f7a6b5c4d3e2f1a09887766554433221100988776655443322110098877665' },
-    { id: 'aud_03', date: '2026-07-25 09:15:04', actor: 'SYSTEM (Auto-Security)', target: 'esteban.q@acmecorp.com', change: '🔒 SUSPENDIDO: Inactividad 90 días', risk: 'INFO', hash: '77a6b5c4d3e2f1a0988776655443322110098877665544332211009887766544' }
-  ]);
+  const load = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const [u, a] = await Promise.all([
+        apiFetch('/api/v1/admin/users').then((r) => readJSON(r, 'No se pudo leer el equipo.')),
+        apiFetch('/api/v1/admin/audit/log').then((r) => readJSON(r, 'No se pudo leer la auditoría.')),
+      ]);
+      setMembers(u.users || []);
+      setEvents(a.events || []);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [isAdmin]);
 
-  const handleInviteSuccess = (newMember) => {
-    setMembers(prev => [...prev, { ...newMember, pods: ['AFIP', 'Odoo'] }]);
-    
-    // Inyectar log criptográfico en el IAM Audit Trail con firma SHA-256
-    const newLog = {
-      id: `aud_${Math.random().toString(36).substring(2, 9)}`,
-      date: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      actor: 'martin.silva@acmecorp.com',
-      target: newMember.email,
-      change: `🟢 INVITACIÓN Y ROL ASIGNADO: ${newMember.role}`,
-      risk: 'HIGH',
-      hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const act = async (promise, okText) => {
+    setNotice('');
+    try {
+      await promise;
+      setNotice(okText);
+      setError('');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
   };
+
+  const changeRole = (m, role) =>
+    act(
+      apiFetch(`/api/v1/admin/users/${m.id}/roles`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roles: [role] }),
+      }).then((r) => readJSON(r, 'No se pudo cambiar el rol.')),
+      `${m.email} ahora es ${ROLE_LABELS[role]}. Sus sesiones abiertas se cerraron.`,
+    );
+
+  const toggleActive = (m) =>
+    act(
+      apiFetch(`/api/v1/admin/users/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !m.active }),
+      }).then((r) => readJSON(r, 'No se pudo cambiar el estado.')),
+      m.active ? `${m.email} quedó desactivado y sus sesiones se cerraron.` : `${m.email} quedó activo.`,
+    );
+
+  const submitReset = (e) => {
+    e.preventDefault();
+    const m = resetFor;
+    act(
+      apiFetch(`/api/v1/admin/users/${m.id}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_password: resetPassword }),
+      }).then((r) => readJSON(r, 'No se pudo resetear la contraseña.')),
+      `Contraseña de ${m.email} cambiada. Sus sesiones abiertas se cerraron.`,
+    ).then(() => {
+      setResetFor(null);
+      setResetPassword('');
+    });
+  };
+
+  const tabStyle = (id) => ({
+    padding: '10px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600',
+    borderBottom: activeTab === id ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+    color: activeTab === id ? 'var(--accent-cyan)' : 'var(--text-muted)',
+  });
+  const panel = { background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', overflowX: 'auto' };
+  const headRow = { background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', fontSize: '0.72rem', color: 'var(--text-muted)' };
 
   return (
     <div className="team-view-container" style={{ padding: '30px 24px', maxWidth: '1100px', margin: '0 auto' }}>
-      <div className="team-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.6rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            👥 Equipo, Roles & IAM Audit Trail
-          </h2>
+          <h2 style={{ margin: 0, fontSize: '1.6rem' }}>👥 Equipo & Roles</h2>
           <p style={{ color: 'var(--text-muted)', margin: '6px 0 0 0', fontSize: '0.9rem' }}>
-            Control de acceso basado en roles (RBAC/ABAC) y registro inmutable de auditoría con firma SHA-256 (SPEC-CORE-24).
+            Usuarios de tu organización y el registro de auditoría de sus cambios.
           </p>
         </div>
-
-        <button className="btn-primary" onClick={() => setShowInviteModal(true)}>
-          + Invitar Colaborador
-        </button>
+        {isAdmin && (
+          <button className="btn-primary" onClick={() => setShowInviteModal(true)}>+ Agregar colaborador</button>
+        )}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
-        <button
-          onClick={() => setActiveTab('members')}
-          style={{ padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: activeTab === 'members' ? '2px solid var(--accent-cyan)' : '2px solid transparent', color: activeTab === 'members' ? 'var(--accent-cyan)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
-        >
-          👤 Colaboradores ({members.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('matrix')}
-          style={{ padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: activeTab === 'matrix' ? '2px solid var(--accent-cyan)' : '2px solid transparent', color: activeTab === 'matrix' ? 'var(--accent-cyan)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
-        >
-          🎛️ Matriz de Permisos por Pod
-        </button>
-        <button
-          onClick={() => setActiveTab('audit')}
-          style={{ padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: activeTab === 'audit' ? '2px solid var(--accent-cyan)' : '2px solid transparent', color: activeTab === 'audit' ? 'var(--accent-cyan)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
-        >
-          📜 IAM Audit Trail ({auditLogs.length})
-        </button>
-      </div>
-
-      {/* TAB 1: MEMBERS TABLE */}
-      {activeTab === 'members' && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Colaborador</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Rol</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Pods Permitidos</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Última Actividad</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map(m => (
-                <tr key={m.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{m.name}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{m.email}</div>
-                  </td>
-                  <td style={{ padding: '14px 16px', fontWeight: '600' }}>{m.role}</td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {m.pods.map((p, i) => (
-                        <span key={i} style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(0, 242, 254, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
-                          {p}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{m.lastActive}</td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                    <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem' }}>Editar Permisos</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {!session && (
+        <p style={{ color: 'var(--text-muted)' }}>La gestión del equipo necesita iniciar sesión, y el core está corriendo sin login.</p>
+      )}
+      {session && !isAdmin && (
+        <p style={{ color: 'var(--text-muted)' }}>Solo los administradores de tu organización pueden ver y gestionar el equipo. Pedile a uno que te cambie el rol si lo necesitás.</p>
       )}
 
-      {/* TAB 2: PERMISSIONS MATRIX */}
-      {activeTab === 'matrix' && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Colaborador</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>🇦🇷 AFIP Consultas</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>🇦🇷 AFIP CSR/Claves</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>🏭 Odoo Facturas</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>🏭 Odoo Stock</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>🐙 GitHub DevOps</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>🛡️ Vault Access</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                <td style={{ padding: '12px 16px', fontWeight: '600' }}>Martin Silva (Owner)</td>
-                <td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                <td style={{ padding: '12px 16px', fontWeight: '600' }}>Laura Gómez (Finanzas)</td>
-                <td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>❌</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                <td style={{ padding: '12px 16px', fontWeight: '600' }}>Carlos Ruiz (Depósito)</td>
-                <td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>❌</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '12px 16px', fontWeight: '600' }}>Auditoría KPMG</td>
-                <td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>❌</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>✅</td><td style={{ textAlign: 'center' }}>❌</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* TAB 3: IAM AUDIT TRAIL */}
-      {activeTab === 'audit' && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', background: 'rgba(0,242,254,0.05)', borderBottom: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: '600' }}>
-            🔒 Registro Inmutable Append-Only · Firma SHA-256 de Invariabilidad (ISO 27001 / SOC 2)
+      {isAdmin && (
+        <>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+            <button onClick={() => setActiveTab('members')} style={tabStyle('members')}>👤 Colaboradores ({members.length})</button>
+            <button onClick={() => setActiveTab('audit')} style={tabStyle('audit')}>📜 Auditoría ({events.length})</button>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Fecha / Hora</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Actor (Quién Cambió)</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Target (Afectado)</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Cambio (Diff)</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Firma SHA-256</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditLogs.map(log => (
-                <tr key={log.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{log.date}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: '600' }}>{log.actor}</td>
-                  <td style={{ padding: '12px 16px' }}>{log.target}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: '600' }}>{log.change}</td>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {log.hash.substring(0, 16)}...
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+          {error && <p role="alert" style={{ color: '#f87171', fontSize: '0.85rem' }}>{error}</p>}
+          {notice && <p role="status" style={{ color: '#34d399', fontSize: '0.85rem' }}>{notice}</p>}
+
+          {resetFor && (
+            <form onSubmit={submitReset} style={{ ...panel, padding: '16px', marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.85rem' }}>Nueva contraseña para <b>{resetFor.email}</b>:</span>
+              <input type="password" required minLength={12} autoComplete="new-password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Mínimo 12 caracteres"
+                style={{ padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)' }} />
+              <button type="submit" className="btn-primary" style={small}>Guardar</button>
+              <button type="button" className="btn-secondary" style={small} onClick={() => { setResetFor(null); setResetPassword(''); }}>Cancelar</button>
+            </form>
+          )}
+
+          {activeTab === 'members' && (
+            <div style={panel}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                <thead>
+                  <tr style={headRow}>
+                    <th style={th}>Colaborador</th>
+                    <th style={th}>Rol</th>
+                    <th style={th}>Estado</th>
+                    <th style={th}>Alta</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m) => {
+                    const role = (m.roles || [])[0] || 'customer';
+                    const self = session && m.id === session.user.id;
+                    const staff = (m.roles || []).some((r) => STAFF.includes(r));
+                    const editable = !self && !staff;
+                    return (
+                      <tr key={m.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ ...td, fontWeight: '600' }}>{m.email}{self && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> (vos)</span>}</td>
+                        <td style={td}>
+                          {editable ? (
+                            <select aria-label={`Rol de ${m.email}`} value={role} onChange={(e) => changeRole(m, e.target.value)}
+                              style={{ padding: '6px 8px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-main)' }}>
+                              <option value="customer">{ROLE_LABELS.customer}</option>
+                              <option value="tenant_admin">{ROLE_LABELS.tenant_admin}</option>
+                            </select>
+                          ) : (m.roles || []).map((r) => ROLE_LABELS[r] || r).join(', ')}
+                        </td>
+                        <td style={{ ...td, color: m.active ? '#34d399' : '#f87171', fontWeight: '600' }}>{m.active ? 'Activo' : 'Desactivado'}</td>
+                        <td style={{ ...td, color: 'var(--text-muted)', fontSize: '0.8rem' }}>{formatDate(m.created_at)}</td>
+                        <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {editable && (
+                            <>
+                              <button className="btn-secondary" style={{ ...small, marginRight: '6px' }} onClick={() => setResetFor(m)}>Resetear contraseña</button>
+                              <button className="btn-secondary" style={small} onClick={() => toggleActive(m)}>{m.active ? 'Desactivar' : 'Activar'}</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {members.length === 0 && !error && (
+                    <tr><td colSpan={5} style={{ ...td, color: 'var(--text-muted)' }}>Cargando equipo…</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'audit' && (
+            <div style={panel}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={headRow}>
+                    <th style={th}>Fecha</th>
+                    <th style={th}>Quién</th>
+                    <th style={th}>Acción</th>
+                    <th style={th}>Sobre</th>
+                    <th style={th}>Resultado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((ev) => (
+                    <tr key={ev.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ ...td, color: 'var(--text-muted)' }}>{formatDate(ev.created_at)}</td>
+                      <td style={{ ...td, fontWeight: '600' }}>{ev.actor}</td>
+                      <td style={td}>{ACTION_LABELS[ev.action] || ev.action}</td>
+                      <td style={td}>{ev.target || '—'}</td>
+                      <td style={{ ...td, color: ev.outcome === 'success' ? '#34d399' : '#f87171' }}>{ev.outcome === 'success' ? 'OK' : ev.outcome}</td>
+                    </tr>
+                  ))}
+                  {events.length === 0 && (
+                    <tr><td colSpan={5} style={{ ...td, color: 'var(--text-muted)' }}>Sin eventos registrados todavía.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
-      {/* MODAL DE INVITACIÓN DE COLABORADOR (SPEC-CORE-31 / Issue #17) */}
       <InviteMemberModal
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
-        onInviteSuccess={handleInviteSuccess}
+        onCreated={() => { setNotice('Usuario creado.'); load(); }}
       />
     </div>
   );
 }
-

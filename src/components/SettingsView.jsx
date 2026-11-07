@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getSession, changePassword } from '../services/session.js';
 
 /**
  * SettingsView — Panel de Usabilidad: Edición Completa de Perfil, Cambio de Contraseña, 2FA e i18n/l10n (SPEC-CORE-31 / SPEC-CORE-45).
@@ -29,6 +30,9 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
   const [otpCode, setOtpCode] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const hasSession = !!getSession();
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -41,12 +45,28 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
     setTimeout(() => setSavedSuccess(false), 3500);
   };
 
-  const handleChangePassword = (e) => {
+  // Cambio de contraseña real contra el core (SPEC-CORE-67.R11).
+  const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (passwordState.newPassword && passwordState.newPassword === passwordState.confirmPassword) {
+    setPasswordError('');
+    if (passwordState.newPassword.length < 12) {
+      setPasswordError('La contraseña nueva tiene que tener al menos 12 caracteres.');
+      return;
+    }
+    if (passwordState.newPassword !== passwordState.confirmPassword) {
+      setPasswordError('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await changePassword(passwordState.currentPassword, passwordState.newPassword);
       setPasswordSuccess(true);
       setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setPasswordSuccess(false), 3500);
+    } catch (err) {
+      setPasswordError(err.message);
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -216,7 +236,18 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
               🔑 Cambio de Contraseña de Acceso
             </h3>
 
+            {!hasSession && (
+              <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                Disponible cuando el portal funciona con login.
+              </p>
+            )}
+            {passwordError && (
+              <div role="alert" style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.35)', color: '#f87171', padding: '8px 12px', borderRadius: '8px', fontSize: '0.82rem', marginBottom: '12px' }}>
+                {passwordError}
+              </div>
+            )}
             <form onSubmit={handleChangePassword}>
+              <fieldset disabled={!hasSession || passwordSaving} style={{ border: 'none', padding: 0, margin: 0 }}>
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>Contraseña Actual</label>
                 <input
@@ -236,7 +267,8 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
                   required
                   value={passwordState.newPassword}
                   onChange={(e) => setPasswordState({ ...passwordState, newPassword: e.target.value })}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 12 caracteres"
+                  autoComplete="new-password"
                   style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
                 />
               </div>
@@ -254,8 +286,9 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
               </div>
 
               <button type="submit" className="btn-secondary" style={{ padding: '8px 16px', width: '100%', background: '#334155', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '700' }}>
-                {passwordSuccess ? '✅ Contraseña Actualizada' : '🔒 Actualizar Contraseña'}
+                {passwordSuccess ? '✅ Contraseña Actualizada' : passwordSaving ? 'Guardando…' : '🔒 Actualizar Contraseña'}
               </button>
+              </fieldset>
             </form>
           </div>
 

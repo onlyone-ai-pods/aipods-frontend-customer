@@ -86,3 +86,17 @@ export async function apiFetch(path, options = {}) {
   if (res.status === 401 && session) setSession(null);
   return res;
 }
+
+/**
+ * Cambia la contraseña del usuario de la sesión (SPEC-CORE-67.R11).
+ * Una contraseña actual incorrecta responde 400 y la sesión sigue abierta.
+ */
+export async function changePassword(currentPassword, newPassword) {
+  const res = await apiFetch(`${API_BASE}/auth/password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'No se pudo cambiar la contraseña.');
+}

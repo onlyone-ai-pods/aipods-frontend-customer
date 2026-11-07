@@ -90,6 +90,7 @@ export async function apiFetch(path, options = {}) {
 /**
  * Cambia la contraseña del usuario de la sesión (SPEC-CORE-67.R11).
  * Una contraseña actual incorrecta responde 400 y la sesión sigue abierta.
+ * Las demás sesiones del usuario (otros navegadores) se cierran.
  */
 export async function changePassword(currentPassword, newPassword) {
   const res = await apiFetch(`${API_BASE}/auth/password`, {
@@ -99,4 +100,9 @@ export async function changePassword(currentPassword, newPassword) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'No se pudo cambiar la contraseña.');
+  // El cambio cierra todas las sesiones del usuario (SPEC-CORE-67.R15); el core
+  // devuelve un token nuevo para que esta siga abierta.
+  if (data.access_token) {
+    setSession({ token: data.access_token, expiresAt: data.expires_at, user: data.user || session.user });
+  }
 }

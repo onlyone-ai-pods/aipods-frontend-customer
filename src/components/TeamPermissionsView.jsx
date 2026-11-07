@@ -185,7 +185,7 @@ export default function TeamPermissionsView() {
                 </thead>
                 <tbody>
                   {members.map((m) => {
-                    const role = (m.roles || [])[0] || 'customer';
+                    const role = (m.roles || []).includes('tenant_admin') ? 'tenant_admin' : 'customer';
                     const self = session && m.id === session.user.id;
                     const staff = (m.roles || []).some((r) => STAFF.includes(r));
                     const editable = !self && !staff;

@@ -532,14 +532,13 @@ export default function InteractiveSandbox() {
       const isMono = isMonotributoQuery(textToSend);
       const isRetenciones = !isMono && (lower.includes('retencion') || lower.includes('retenciones') || lower.includes('percepcion'));
 
-      let cmdText, actionName, summaryText, docCitation, answerText;
+      let cmdText, actionName, summaryText, answerText;
 
       if (isMono) {
         const mono = filterMonotributo(textToSend);
         cmdText = `node scripts/monotributo_estado_cuenta.js --cuit=20262534538 --periodo=${mono.label}`;
         actionName = 'consultar_monotributo_estado_cuenta';
         summaryText = `Consulta de Estado de Cuenta Monotributo (Período: ${mono.label}).`;
-        docCitation = 'ARCA_Monotributo_Spec_v2026.pdf';
         answerText = mono.suggestion
           ? `### 🧾 Estado de Cuenta Monotributo\n\n${mono.suggestion}\n\n💡 *Puedes filtrar: 'julio', '07/2026', 'adeudado', 'pagado' o 'pendiente'.*`
           : `### 🧾 Estado de Cuenta Monotributo\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).\n\n💡 *Puedes filtrar por período: 'julio', '07/2026', 'adeudado', 'pagado' o 'pendiente'.*`;
@@ -547,13 +546,11 @@ export default function InteractiveSandbox() {
         cmdText = 'node scripts/mis_retenciones_arca.js --cuit=20262534538';
         actionName = 'descargar_retenciones_arca';
         summaryText = 'Consulta de retenciones en ARCA.';
-        docCitation = 'ARCA_MisRetenciones_Spec_v2026.pdf';
         answerText = `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).`;
       } else {
         cmdText = `node scripts/puntos_de_venta_arca.js --accion=Consultar --query="${textToSend}" --cuit=20262534538`;
         actionName = 'gestionar_puntos_de_venta_arca';
         summaryText = `Búsqueda de Puntos de Venta ('${textToSend}') en ARCA.`;
-        docCitation = 'ARCA_PuntosDeVenta_Spec_v2026.pdf';
         answerText = `### 📄 Resultado de Consulta en ARCA\n\nSe completó la verificación con simulación activada (\`dry_run = true\`).\n\n💡 *Puedes buscar: 'ver odoo', 'rece', '00007', 'inactivos' o 'todos'.*`;
       }
 
@@ -563,7 +560,7 @@ export default function InteractiveSandbox() {
           sender: 'bot',
           podId: 'POD_AFIP_FISCAL',
           text: answerText,
-          citations: [docCitation],
+          citations: [],
           searchQuery: textToSend,
           dryRun: {
             is_dry_run: true,

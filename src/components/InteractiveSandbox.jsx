@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { apiFetch, currentTenant } from '../services/session.js';
+import { apiFetch, currentTenant, getSession } from '../services/session.js';
 import SlashCommandPalette, { POD_REGISTRY, UNIVERSAL_COMMANDS } from './SlashCommandPalette';
 import FeedbackButtons from './FeedbackButtons';
 
@@ -412,53 +412,47 @@ export default function InteractiveSandbox() {
     }
   }, [messages.length, loading]);
 
-  // Polling to sync Admin approvals live back to Customer chat screen
+  // Seguimiento de aprobaciones (SPEC-CORE-67.R14): por cada acción pendiente se
+  // consulta su estado con el token que devolvió el pod. No hace falta rol de admin.
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   useEffect(() => {
     if (!session) return;
 
-    const checkApprovalsSync = async () => {
-      try {
-        const res = await apiFetch('/api/v1/admin/approvals');
-        if (res.status === 403) {
-          // Con login, solo un administrador lee la cola de aprobaciones (SPEC-CORE-67).
-          clearInterval(interval);
-          return;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          const approvalsMap = {};
-          (data.approvals || []).forEach(item => {
-            if (item.token) approvalsMap[item.token] = item;
-          });
-
+    const checkApprovals = async () => {
+      const pending = messagesRef.current
+        .map(m => m.dryRun && !['APPROVED', 'REJECTED'].includes(m.dryRun.status) ? (m.dryRun.approval_token || m.dryRun.token) : null)
+        .filter(Boolean);
+      for (const token of [...new Set(pending)]) {
+        try {
+          const res = await apiFetch(`/api/v1/approvals/${encodeURIComponent(token)}`);
+          if (!res.ok) continue;
+          const updated = await res.json();
+          if (updated.status !== 'APPROVED' && updated.status !== 'REJECTED') continue;
           setMessages(prevMsgs =>
             prevMsgs.map(msg => {
-              if (msg.dryRun) {
-                const token = msg.dryRun.approval_token || msg.dryRun.ApprovalToken || msg.dryRun.token;
-                if (token && approvalsMap[token]) {
-                  const updated = approvalsMap[token];
-                  if (updated.status === 'APPROVED' || updated.status === 'REJECTED') {
-                    return {
-                      ...msg,
-                      dryRun: {
-                        ...msg.dryRun,
-                        status: updated.status,
-                        execution_result: updated.execution_result || msg.dryRun.execution_result
-                      }
-                    };
-                  }
+              const t = msg.dryRun && (msg.dryRun.approval_token || msg.dryRun.token);
+              if (t !== token) return msg;
+              return {
+                ...msg,
+                dryRun: {
+                  ...msg.dryRun,
+                  status: updated.status,
+                  execution_result: updated.execution_result || msg.dryRun.execution_result
                 }
-              }
-              return msg;
+              };
             })
           );
+        } catch (err) {
+          // Sin conexión: se reintenta en la próxima vuelta.
         }
-      } catch (err) {
-        // Ignore offline error
       }
     };
 
-    const interval = setInterval(checkApprovalsSync, 1500);
+    const interval = setInterval(checkApprovals, 3000);
     return () => clearInterval(interval);
   }, [session]);
 
@@ -742,6 +736,9 @@ export default function InteractiveSandbox() {
               {messages.map((m, idx) => {
                 const token = m.dryRun ? (m.dryRun.approval_token || m.dryRun.ApprovalToken || m.dryRun.token) : null;
                 const isApproved = m.dryRun && m.dryRun.status === 'APPROVED';
+                const isRejected = m.dryRun && m.dryRun.status === 'REJECTED';
+                // Con login, el cliente no se aprueba a sí mismo: espera al admin.
+                const waitsForAdmin = !!getSession();
 
                 return (
                   <div key={idx} className={`message-row ${m.sender}`}>
@@ -796,7 +793,20 @@ export default function InteractiveSandbox() {
                             </div>
                           )}
 
-                          {token && !isApproved && (
+                          {isRejected && (
+                            <div role="status" style={{ marginTop: '10px', padding: '10px 12px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '6px', color: '#f87171', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                              ❌ Rechazado por el administrador. La acción no se ejecutó.
+                            </div>
+                          )}
+
+                          {token && !isApproved && !isRejected && waitsForAdmin && (
+                            <div role="status" style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Token: <code>{token}</code></span>
+                              <span style={{ fontSize: '0.82rem', color: '#fbbf24', fontWeight: 'bold' }}>⏳ Esperando aprobación del administrador…</span>
+                            </div>
+                          )}
+
+                          {token && !isApproved && !isRejected && !waitsForAdmin && (
                             <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Token: <code>{token}</code></span>
                               <button

@@ -1388,3 +1388,15 @@ body {
 }
 
 
+
+/* SPEC-CORE-71.R1: respuesta servida desde la caché semántica (contraste AAA con --text-main) */
+.cache-badge {
+  display: inline-block;
+  margin: 0 0 6px 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+}

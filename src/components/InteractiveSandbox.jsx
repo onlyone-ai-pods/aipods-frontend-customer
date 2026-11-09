@@ -374,10 +374,11 @@ export default function InteractiveSandbox() {
     handleSendQuery(fullQuery);
   };
 
-  // Feedback handler (Issue #14 & SPEC-CORE-17: Purga Reactiva de Caché Redis)
+  // Feedback handler (SPEC-CORE-71.R4): 👍 verifica y 👎 purga la respuesta en caché.
+  // La caché se indexa por la pregunta del usuario, no por el texto de la respuesta.
   const handleFeedback = async (messageId, type, reason) => {
     const msg = messages[messageId];
-    const targetQuery = msg ? msg.text : '';
+    const targetQuery = msg && msg.searchQuery ? msg.searchQuery : '';
 
     console.log('[FEEDBACK SENT]', { messageId, type, reason, podId: activePod });
 
@@ -518,7 +519,10 @@ export default function InteractiveSandbox() {
             text: data.response.answer,
             citations: data.response.citations,
             dryRun: data.response.dry_run_result,
-            searchQuery: textToSend
+            searchQuery: textToSend,
+            cached: data.response.cached === true,
+            cacheScope: data.response.cache_scope,
+            cacheStatus: data.response.cache_status
           }
         ]);
       } else {
@@ -745,6 +749,13 @@ export default function InteractiveSandbox() {
 
                     <div className={`message-bubble ${m.sender}`} style={m.sender === 'system' ? { alignSelf: 'center' } : {}}>
                       {m.podId && <span className="pod-badge">🤖 {m.podId}</span>}
+                      {m.cached && (
+                        <span className="cache-badge">
+                          <span aria-hidden="true">⚡ </span>
+                          {m.cacheStatus === 'VERIFIED' ? 'Respuesta verificada desde caché' : 'Respuesta desde caché'}
+                          {m.cacheScope === 'GLOBAL' ? ' (normativa compartida)' : ''}
+                        </span>
+                      )}
                       <div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
                       
                       {m.citations && m.citations.length > 0 && (
